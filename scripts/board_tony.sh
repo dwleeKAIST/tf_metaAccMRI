@@ -1,1 +1,1 @@
-tensorboard --logdir=./../../data/MRI/result/DS2_meta_full_K50 --port=6004
+tensorboard --logdir=./../../data/MRI/result/DS2_meta_K3 --port=6005

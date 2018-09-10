@@ -104,10 +104,10 @@ class FewShot:
             #self.gvs        = self.optimizer_.compute_gradients(self.loss_test+self.loss_learner, var_list=self.THETA_)
             #self.gvs_state  = self.optimizer_.compute_gradients(self.loss_test+self.loss_learner, var_list=[self.THETA_state+self.THETA_])
             
-            self.gvs        = self.optimizer2_.compute_gradients(self.loss_test, var_list=self.THETA_)
-            self.gvs_state  = self.optimizer_.compute_gradients(self.loss_test, var_list=self.THETA_state)
-            self.optimizer  = self.optimizer2_.apply_gradients(self.gvs,global_step=self.global_step)
-            self.optimizer_state  = self.optimizer_.apply_gradients(self.gvs_state,global_step=self.global_step)
+            self.gvs        = self.optimizer_.compute_gradients(self.loss_test, var_list=self.THETA_)
+            self.gvs_state  = self.optimizer2_.compute_gradients(self.loss_test, var_list=self.THETA_state)
+            self.optimizer  = self.optimizer_.apply_gradients(self.gvs,global_step=self.global_step)
+            self.optimizer_state  = self.optimizer2_.apply_gradients(self.gvs_state,global_step=self.global_step)
             #clipped_gvs= [(tf.clip_by_value(grad,-clip,clip),var) for grad, var in gvs]
             #optimizer  = optimizer_.apply_gradients(clipped_gvs)
             #    optimizer = tf.train.AdamOptimizer(learning_rate = lr_).minimize(loss_test,var_list=THETA_)

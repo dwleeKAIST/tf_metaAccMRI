@@ -73,24 +73,24 @@ with tf.Session(config=config) as sess:
     t_init = time.time()
     print("------- %d sec to initialize network-----" % (t_init-start_time) )
    
-    nE_update = opt.nEpoch_state_update + opt.nEpoch_Wb_update
     # save the initailzed (Xavier) c2 to c2_init
     myFS.save_state(sess)
+    #nE_update=(opt.nEpoch_state_update + opt.nEpoch_Wb_update)
     ## Fisrt, train the learner network
     for iEpoch in range(epoch_start, opt.nEpoch):
         if not opt.debug_mode:
             DB_train.shuffle()
+        #if iEpoch>40:
+        #    nE_update = opt.nEpoch_state_update + opt.nEpoch_Wb_update + int(iEpoch/10)
+
         disp_cnt = 0
         sum_loss_train = 0.0
         t_i_1 = time.time()
         #out_argm = [myFS.optimizer_pre, myFS.loss_test, myFS.merged_all, myFS.gvs_pre]
         #out_arg  = [myFS.optimizer_pre, myFS.loss_test]
-        tag_state_update = ((iEpoch % nE_update) < opt.nEpoch_state_update)
+        tag_state_update = iEpoch%2#((iEpoch % nE_update) < opt.nEpoch_state_update)
         if tag_state_update:
-            if iEpoch%2==0:
-                func_getBatch = DB_train.getBatch_G_train
-            else:
-                func_getBatch = DB_train.getBatch_G
+            func_getBatch = DB_train.getBatch_G#_train
             out_argm = [myFS.optimizer_state, myFS.loss_test, myFS.merged_all]
             out_arg  = [myFS.optimizer_state, myFS.loss_test]
         else:
@@ -108,8 +108,8 @@ with tf.Session(config=config) as sess:
                 disp_cnt+=1
             else:
                 _,loss_test_train  = sess.run(out_arg,feed_dict=feed_dict)
-            if tag_state_update:
-                myFS.save_state(sess) # save the c to c_init
+            #if tag_state_update:
+            myFS.save_state(sess) # save the c to c_init
             sum_loss_train += loss_test_train
         t_i_v = time.time()
         print('%d epoch -- loss : %.4f e-3, %d sec' %(iEpoch, sum_loss_train/opt.nStep_train*1000, t_i_v-t_i_1))

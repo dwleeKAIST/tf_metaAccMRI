@@ -118,7 +118,7 @@ class DB7T():
             input_ACSk_ri[iB,:,:,:]  = aACS_k[:,:,self.bias::self.DSrate]
             target_ACSk_ri[iB,:,:,:] = aACS_k[:,:,self.bias+1::self.DSrate]
             input_k_ri[iB,:,:,:]  = bTarget_k[:,:,self.bias::self.DSrate]
-            target_k_ri[iB,:,:,:] = bTarget_k[:,:,self.bias+1::self.DSrate]
+            target_k_ri[iB,:,:,:] = aTarget_k[:,:,self.bias+1::self.DSrate]
         
         return input_ACSk_ri, target_ACSk_ri, input_k_ri, target_k_ri    
 
