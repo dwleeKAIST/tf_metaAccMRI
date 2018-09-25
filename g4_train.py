@@ -22,6 +22,12 @@ else:
 
 if opt.model == 'Gnet_':
     from model.learner import Gnet_ as Learner
+elif opt.model == 'Gnet2_':
+    from model.learner import Gnet2_ as Learner
+elif opt.model == 'Unet_':
+    from model.learner import Unet_ as Learner
+elif opt.model == 'Unet_wo_BN':
+    from model.learner import Unet_wo_BN as Learner
 elif opt.model == 'tmp_net':
     from model.learner import tmp_net as Learner
 else:
@@ -40,7 +46,7 @@ disp_step_train = ceil(opt.nStep_train/opt.disp_div_N)
 disp_step_valid = ceil(opt.nStep_valid/opt.disp_div_N)
 
 ## dummy data info
-model_id  = 'nCh'+str(opt.ngf)
+model_id  = 'DS4nCh'+str(opt.ngf)
 opt.d_spath1 = './model/dummy/'+opt.model+'_theta_shapes_'+model_id+'.npy'
 opt.d_spath2 = './model/dummy/'+opt.model+'_ntheta_'+model_id+'.npy'
 if os.path.isfile(opt.d_spath1):
@@ -50,7 +56,8 @@ else:
     opt.dummy_theta_shapes=[]
     opt.ntheta            =[]
     st()
-
+#init_ =  "./model/dummy/"+opt.model+model_id+ "initmodel.ckpt-0"
+#
 ##
 start_time = time.time()
 myFS       = myModel(opt, metaLearner, Learner)
@@ -64,6 +71,9 @@ with tf.Session(config=config) as sess:
         print("Start! initially!")
         tf.global_variables_initializer().run()
         epoch_start=0
+        #st()
+        #if os.path.isfile(init_+".meta"):
+        #    saver.restore(sess, init_)
     else:
         print("Start from saved model -"+latest_ckpt)
         saver.restore(sess, latest_ckpt)
@@ -80,9 +90,10 @@ with tf.Session(config=config) as sess:
     for iEpoch in range(epoch_start, opt.nEpoch):
         if not opt.debug_mode:
             DB_train.shuffle()
-        #if iEpoch>40:
-        #    nE_update = opt.nEpoch_state_update + opt.nEpoch_Wb_update + int(iEpoch/10)
-
+#        if iEpoch==71:
+#            st()
+#            path_saved = saver.save(sess, os.path.join("./model/dummy/"+opt.model+model_id, "initmodel.ckpt"), global_step=0)
+#
         disp_cnt = 0
         sum_loss_train = 0.0
         t_i_1 = time.time()
@@ -90,27 +101,33 @@ with tf.Session(config=config) as sess:
         #out_arg  = [myFS.optimizer_pre, myFS.loss_test]
         tag_state_update = ((iEpoch % nE_update) < opt.nEpoch_state_update)
         if tag_state_update:
-            func_getBatch = DB_train.getBatch_G#_train
-            out_argm = [myFS.optimizer_state, myFS.loss_test, myFS.merged_all]
-            out_arg  = [myFS.optimizer_state, myFS.loss_test]
+            #if iEpoch%2==0:
+            #    func_getBatch = DB_train.getBatch_G4_train
+            #else:
+            func_getBatch = DB_train.getBatch_G4#_train
+            out_argm = [myFS.loss_test, myFS.optimizer_simul, myFS.save_states,  myFS.merged_all]
+            out_arg  = [myFS.loss_test, myFS.optimizer_simul, myFS.save_states ]
+            #out_argm = [myFS.loss_test, myFS.optimizer_state, myFS.save_states,  myFS.merged_all]
+            #out_arg  = [myFS.loss_test, myFS.optimizer_state, myFS.save_states ]
         else:
-            func_getBatch = DB_train.getBatch_G
-            out_argm = [myFS.optimizer, myFS.loss_test, myFS.merged_all]
-            out_arg  = [myFS.optimizer, myFS.loss_test]
-        myFS.k_shot = int(opt.k_shot+iEpoch/500)
+            func_getBatch = DB_train.getBatch_G4
+            out_argm = [myFS.loss_test, myFS.optimizer,  myFS.merged_all]
+            out_arg  = [myFS.loss_test, myFS.optimizer ]
+        myFS.k_shot = int(opt.k_shot+iEpoch/25) if myFS.k_shot <opt.k_shot_max else opt.k_shot_max
         for step in range(opt.nStep_train):
             _input_ACSk, _target_ACSk, _input_k, _target_k = func_getBatch(step*nB, (step+1)*nB)
+            
             myFS.restore_state(sess)
             feed_dict={myFS.input_node_train: _input_ACSk, myFS.target_node_train: _target_ACSk, myFS.input_node_test: _input_k, myFS.target_node_test:_target_k,myFS.is_Training:True}
             if step%disp_step_train==0 or step==0:
-                _,loss_test_train, merged = sess.run(out_argm,feed_dict=feed_dict)
-                summary_writer.add_summary(merged, iEpoch*opt.disp_div_N+disp_cnt)
+                results = sess.run(out_argm,feed_dict=feed_dict)
+                summary_writer.add_summary(results[-1], iEpoch*opt.disp_div_N+disp_cnt)
                 disp_cnt+=1
             else:
-                _,loss_test_train  = sess.run(out_arg,feed_dict=feed_dict)
+                results  = sess.run(out_arg,feed_dict=feed_dict)
             #if tag_state_update:
             myFS.save_state(sess) # save the c to c_init
-            sum_loss_train += loss_test_train
+            sum_loss_train += results[0]
         t_i_v = time.time()
         print('%d epoch -- loss : %.4f e-3, %d sec' %(iEpoch, sum_loss_train/opt.nStep_train*1000, t_i_v-t_i_1))
         disp_cnt = 0
@@ -118,7 +135,7 @@ with tf.Session(config=config) as sess:
 
         for step in range(opt.nStep_valid):
             myFS.restore_state(sess)
-            _input_ACSk, _target_ACSk, _input_k, _target_k = DB_valid.getBatch_G(step*opt.batchSize, (step+1)*opt.batchSize)
+            _input_ACSk, _target_ACSk, _input_k, _target_k = DB_valid.getBatch_G4(step*opt.batchSize, (step+1)*opt.batchSize)
             feed_dict = {myFS.input_node_train: _input_ACSk, myFS.target_node_train: _target_ACSk, myFS.input_node_test: _input_k, myFS.target_node_test:_target_k,myFS.is_Training:False}
             if step%disp_step_valid==0 or step==0:
                 loss_test_valid, merged = sess.run([myFS.loss_test, myFS.merged_all], feed_dict=feed_dict)

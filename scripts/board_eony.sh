@@ -1,1 +1,1 @@
-tensorboard --logdir=./../../data/MRI/result/metaUnet_debug --port=6006
+tensorboard --logdir=./../../data/MRI/result/DS4_meta_UnetwoBN_K10_simul --port=5003

@@ -2,7 +2,7 @@ import os
 import numpy as np
 from ipdb import set_trace as st
 import tensorflow as tf
-from util.util import tf_kri2imgri, DIM2CH2, tf_pad0, tf_imgri2ssos
+from util.util import tf_kri2imgri, DIM2CH2, DIM2CH4, tf_pad0, tf_imgri2ssos
 import time
 
 dtype = tf.float32
@@ -177,27 +177,35 @@ class FewShotG:
         with tf.device(str_):
             ## parameters
             self.nCh_out = opt.nCh_out
-            self.myD2C_train = DIM2CH2(shape4D=[1,opt.nCh_in,opt.nY,opt.nACS], inp_1st=True)
-            self.myD2C_test  = DIM2CH2(shape4D=[1,opt.nCh_in,opt.nY,opt.nX], inp_1st=True)
+            if opt.DSrate ==2:
+                self.myD2C_train = DIM2CH2(shape4D=[1,opt.nCh_in,opt.nY,opt.nACS])
+                self.myD2C_test  = DIM2CH2(shape4D=[1,opt.nCh_in,opt.nY,opt.nX] )
+            elif opt.DSrate==4:
+                self.myD2C_train = DIM2CH4(shape4D=[1,opt.nCh_in,opt.nY,opt.nACS])
+                self.myD2C_test  = DIM2CH4(shape4D=[1,opt.nCh_in,opt.nY,opt.nX])
+            else:
+                st()
  
             ##
             nEpochDecay = 20
             self.global_step = tf.Variable(0, dtype=dtype)
             self.lr_         = tf.train.exponential_decay(learning_rate=opt.lr, global_step=self.global_step, decay_steps=opt.nStep_train*nEpochDecay, decay_rate=0.99, staircase=True)
+            self.lr_state_   = tf.train.exponential_decay(learning_rate=opt.lr_state, global_step=self.global_step, decay_steps=opt.nStep_train*nEpochDecay, decay_rate=0.99, staircase=True)
             tf.summary.scalar("train__monitor/learning rate ",  self.lr_)   
-             
+            tf.summary.scalar("train__monitor/learning rate for state ",  self.lr_state_)   
+            
             ## def. of placeholder
-            self.input_node_train  = tf.placeholder(dtype,[None, opt.nCh_in,  opt.nY, int(opt.nACS/opt.DSrate)])
-            self.target_node_train = tf.placeholder(dtype,[None, opt.nCh_out, opt.nY, int(opt.nACS/opt.DSrate)])
-            self.input_node_test   = tf.placeholder(dtype,[None, opt.nCh_in,  opt.nY, int(opt.nX/opt.DSrate)])
-            self.target_node_test  = tf.placeholder(dtype,[None, opt.nCh_out, opt.nY, int(opt.nX/opt.DSrate)])
+            self.input_node_train  = tf.placeholder(dtype,[None, opt.nCh_in,  opt.nY, opt.dsnACS])
+            self.target_node_train = tf.placeholder(dtype,[None, opt.nCh_out, opt.nY, opt.dsnACS])
+            self.input_node_test   = tf.placeholder(dtype,[None, opt.nCh_in,  opt.nY, opt.dsnX])
+            self.target_node_test  = tf.placeholder(dtype,[None, opt.nCh_out, opt.nY, opt.dsnX])
             self.is_Training       = tf.placeholder(tf.bool)
             
 
             self.target_imgri_train = tf_kri2imgri(self.target_node_train)
             self.target_imgri_test  = tf_kri2imgri(self.target_node_test)
 
-## dymmy info extract
+            ## dymmy info extract
             if opt.dummy_theta_shapes==[]:
                 st()
                 _ = Learner(self.input_node_train, self.nCh_out,nCh=opt.ngf)
@@ -217,13 +225,13 @@ class FewShotG:
                 self.ntheta             = opt.ntheta
 
             ## def meta-learner and init theta
-            self.R = metaLearner(self.dummy_theta_shapes,Learner,  nHidden = opt.nHidden, ntheta=int(self.ntheta),kloss=opt.use_kloss)
+            self.R = metaLearner(self.dummy_theta_shapes,Learner,  opt)
     
             with tf.variable_scope('state'):
-                self.c1 = tf.Variable(tf.truncated_normal([self.ntheta,opt.nHidden],-0.1,0.1),name='c1')
-                self.c2 = tf.Variable(tf.truncated_normal([self.ntheta,  1],-0.1,0.1),name='c2')
+                self.c1 = tf.Variable(tf.truncated_normal([self.ntheta,opt.nHidden],-0.5,0.5),name='c1')
+                self.c2 = tf.Variable(tf.truncated_normal([self.ntheta,  1],-0.5,0.5),name='c2')
                 self.f2 = tf.Variable(tf.ones([self.ntheta,1],name='f2'))
-                self.i2 = tf.Variable(tf.zeros([self.ntheta,1],name='i2'))
+                self.i2 = tf.Variable(tf.ones([self.ntheta,1],name='i2'))
                 
             self.THETA_              = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.R.name)
             self.THETA_state         = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='state')
@@ -231,7 +239,7 @@ class FewShotG:
             self.c1_init = tf.Variable(tf.zeros([self.ntheta,opt.nHidden]),trainable=False)
             self.c2_init = tf.Variable(tf.zeros([self.ntheta,1]),trainable=False)
             self.f2_init = tf.Variable(tf.ones([self.ntheta,1]),trainable=False)
-            self.i2_init = tf.Variable(tf.zeros([self.ntheta,1]),trainable=False)
+            self.i2_init = tf.Variable(tf.ones([self.ntheta,1]),trainable=False)
             ##------------------------------------------------------------------------------
         
             restore_c1 = tf.assign(self.c1, self.c1_init)
@@ -245,7 +253,7 @@ class FewShotG:
             #save_f2 = tf.assign(self.f2_init,self.f2)
             #save_i2 = tf.assign(self.i2_init,self.i2)
             self.save_states    = tf.group(save_c1, save_c2)#, save_f2, save_i2)
-    
+     
             self.c1, self.c2, self.f2, self.i2, self.loss_learner,self.grad_thetas = self.R.f(self.k_shot, self.input_node_train, self.target_node_train, self.c1, self.c2, self.f2, self.i2,self.is_Training)
             
 #            propagt_c1 = tf.assign(self.c1, self.c1_)
@@ -261,27 +269,23 @@ class FewShotG:
             ## Apply the last theta to test data
             self.net_out_test, _, self.loss_test =  self.R.learner_f(self.input_node_test,self.target_node_test,self.c2)
             self.cost_test      = tf.losses.mean_squared_error(labels=self.target_imgri_test,predictions=tf_kri2imgri(self.net_out_test))
-            
             self.optimizer_ = tf.train.AdamOptimizer(learning_rate = self.lr_)
-            self.optimizer2_ = tf.train.AdamOptimizer(learning_rate = self.lr_*0.1)
-            #optimizer_ = tf.train.RMSPropOptimizer(learning_rate = lr_) 
-            #self.gvs        = self.optimizer_.compute_gradients(self.loss_test+self.loss_learner, var_list=self.THETA_)
-            #self.gvs_state  = self.optimizer_.compute_gradients(self.loss_test+self.loss_learner, var_list=[self.THETA_state+self.THETA_])
-            #self.gvs_state  = self.optimizer_.compute_gradients(self.loss_test+self.loss_learner, var_list=[self.THETA_state])
+            #self.optimizer2_ = tf.train.AdamOptimizer(learning_rate = self.lr_state_)
+            self.optimizer2_ = tf.train.GradientDescentOptimizer(learning_rate = self.lr_state_)
 
-            self.gvs_pre    = self.optimizer_.compute_gradients(self.loss_train, var_list=self.THETA_state)
-            self.optimizer_pre = self.optimizer_.apply_gradients(self.gvs_pre,global_step=self.global_step)
+            #self.gvs_pre    = self.optimizer_.compute_gradients(self.loss_train, var_list=self.THETA_state)
+            #self.optimizer_pre = self.optimizer_.apply_gradients(self.gvs_pre,global_step=self.global_step)
 
             self.gvs        = self.optimizer_.compute_gradients(self.loss_test, var_list=self.THETA_)
-            #self.gvs_state  = self.optimizer_.compute_gradients(self.loss_test+self.loss_learner, var_list=[self.THETA_state+self.THETA_])
             self.gvs_state  = self.optimizer2_.compute_gradients(self.loss_test, var_list=[self.THETA_state])
+            self.gvs_simul  = self.optimizer_.compute_gradients(self.loss_test, var_list=[self.THETA_, self.THETA_state])
+            #self.clipped_gvs= [(tf.clip_by_value(grad,-opt.clip,opt.clip),var) for grad, var in self.gvs]
+            #self.clipped_gvs_state =  [(tf.clip_by_value(grad,-opt.clip,opt.clip),var) for grad, var in self.gvs_state]
 
             self.optimizer  = self.optimizer_.apply_gradients(self.gvs,global_step=self.global_step)
             self.optimizer_state  = self.optimizer2_.apply_gradients(self.gvs_state,global_step=self.global_step)
-            #clipped_gvs= [(tf.clip_by_value(grad,-clip,clip),var) for grad, var in gvs]
-            #optimizer  = optimizer_.apply_gradients(clipped_gvs)
-            #    optimizer = tf.train.AdamOptimizer(learning_rate = lr_).minimize(loss_test,var_list=THETA_)
-            #    optimizer_state = tf.train.AdamOptimizer(learning_rate=lr_).minimize(loss_test,var_list=[THETA_,THETA_state])
+            self.optimizer_simul = self.optimizer_.apply_gradients(self.gvs_simul, global_step=self.global_step)
+            
             ## monitor the of RNN
             tf.summary.scalar("LSTM1c/_init ",  tf.reduce_mean(tf.abs(self.c1_init)))
             tf.summary.scalar("LSTM2c/_init ",  tf.reduce_mean(tf.abs(self.c2_init)))

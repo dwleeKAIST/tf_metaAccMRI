@@ -7,13 +7,14 @@ import copy
 from ipdb import set_trace as st
 
 class DB7T():
-    def __init__(self,opt,phase,dataroot='./../../data/MRI/T1w_pad_8ch_x2_halfnY',DSrate=2):
+    def __init__(self,opt,phase,dataroot='./../../mrdata/T1w_pad_8ch_x2_halfnY'):
         super(DB7T, self).__init__()
         random.seed(0)
         self.dataroot = dataroot
         self.root   = join(self.dataroot,phase)
         self.flist  = []
 
+        self.norm_ch = False#True
         list_fname = join(self.dataroot, 'DBset_'+phase+'.npy')
         if isfile(list_fname):
             print(list_fname + ' exists. Now loading...')
@@ -28,20 +29,20 @@ class DB7T():
             self.flist = flist
         if opt.smallDB: 
             self.flist = self.flist[0:int(len(self.flist)/10)]
- 
-        self.nCh  = 8*2
+        self.nC   = 8
+        self.nCh  = 8*2 # nCh*Real/imag
         self.nY   = 288#576
         self.nX   = 288
         self.len  = len(self.flist) 
         self.nACS = 32#28
-        self.DSrate = DSrate
+        self.DSrate = opt.DSrate
         self.dsnX   = int(self.nX/self.DSrate)
         self.len  = len(self.flist) 
         self.dsnACS = int(self.nACS/self.DSrate)
 
         self.ACS_s= int((self.nX-self.nACS)/2)
         self.ACS_e= self.ACS_s+self.nACS
-        self.mask = np.zeros([self.nCh, self.nY, self.nX])
+        self.mask_woACS = np.zeros([self.nCh, self.nY, self.nX])
 
         self.nACSACS=16
         self.ACSACS_s=int((self.nX-self.nACSACS)/2)
@@ -54,25 +55,49 @@ class DB7T():
         else:
             st()
         vec = [i*self.DSrate+self.bias for i in range(int(self.nX/self.DSrate))]
-        self.mask[:,:,vec]=1
+        self.mask_woACS[:,:,vec]=1
+        self.mask = copy.deepcopy(self.mask_woACS)
         self.mask2 = copy.deepcopy(self.mask)
         self.mask[:,:,self.ACS_s:self.ACS_e]=1
         self.mask2[:,:,self.ACSACS_s:self.ACSACS_e]=1
+        
+        self.ACS_mask =np.zeros([self.nCh,self.nY,self.nX])
+        self.ACS_mask[:,:,self.ACS_s:self.ACS_e]=1
 
     def getInfo(self,opt):
         opt.nCh_in = self.nCh
-        opt.nCh_out = self.nCh
+        opt.nCh_out = self.nCh*(self.DSrate-1)
         opt.nY   = self.nY
         opt.nX   = self.nX
+        opt.dsnX = self.dsnX
         opt.nACS = self.nACS
+        opt.dsnACS=self.dsnACS
         opt.savepath  = './../../data/MRI/result'
         sdir = opt.savepath+'/'+opt.name+'/'
         opt.log_dir   = sdir+'log_dir/train'
         opt.log_dir_v = sdir+'log_dir/valid'
         opt.ckpt_dir  = sdir+'ckpt_dir'
         opt.hPad = int((self.nX-self.nACS)  /2)
+        opt.ACS_mask = self.ACS_mask
         return opt
     
+    def getInfo_RAKI(self,opt):
+        opt.nCh_in = int(self.nCh/2)
+        opt.nCh_out = 2*(self.DSrate-1)
+        opt.nY   = self.nY
+        opt.nX   = self.nX
+        opt.dsnX = self.dsnX
+        opt.nACS = self.nACS
+        opt.dsnACS=self.dsnACS
+        opt.savepath  = './../../data/MRI/result'
+        sdir = opt.savepath+'/'+opt.name+'/'
+        opt.log_dir   = sdir+'log_dir/train'
+        opt.log_dir_v = sdir+'log_dir/valid'
+        opt.ckpt_dir  = sdir+'ckpt_dir'
+        opt.hPad = int((self.nX-self.nACS)  /2)
+        opt.ACS_mask = self.ACS_mask
+        return opt
+ 
     def getBatch(self, start, end):
         end   = min([end,self.len])
         batch = self.flist[start:end]
@@ -90,6 +115,27 @@ class DB7T():
             DS_ACS_k  = aTarget_k*self.mask2
             input_ACSk_ri[iB,:,:,:]  =  DS_ACS_k[:,:,self.ACS_s:self.ACS_e]
             target_ACSk_ri[iB,:,:,:] = aTarget_k[:,:,self.ACS_s:self.ACS_e]
+            input_k_ri[iB,:,:,:]  = DS_k
+            target_k_ri[iB,:,:,:] = aTarget_k
+        return input_ACSk_ri, target_ACSk_ri, input_k_ri, target_k_ri    
+    
+    def getBatch_RAKI(self, start, end):
+        end   = min([end,self.len])
+        batch = self.flist[start:end]
+
+        sz_       = [end-start, self.nCh, self.nY, self.nX]
+        sz_ACS    = [end-start, self.nCh, self.nY, self.nACS]
+        target_ACSk_ri  = np.empty(sz_ACS, dtype=np.float32)
+        input_ACSk_ri   = np.empty(sz_ACS, dtype=np.float32)
+        target_k_ri     = np.empty(sz_, dtype=np.float32)
+        input_k_ri      = np.empty(sz_, dtype=np.float32)
+
+        for iB, aBatch in enumerate(batch):
+            aTarget_k = self.read_mat(join(self.root,aBatch),'orig_k')
+            DS_k_woACS = aTarget_k*self.mask_woACS
+            DS_k_wACS = aTarget_k*self.mask
+            input_ACSk_ri[iB,:,:,:]  =  DS_k_woACS[:,:,self.ACS_s:self.ACS_e]
+            target_ACSk_ri[iB,:,:,:] = DS_k_wACS[:,:,self.ACS_s:self.ACS_e]
             input_k_ri[iB,:,:,:]  = DS_k
             target_k_ri[iB,:,:,:] = aTarget_k
         return input_ACSk_ri, target_ACSk_ri, input_k_ri, target_k_ri    
@@ -144,6 +190,110 @@ class DB7T():
             target_k_ri[iB,:,:,:] = aTarget_k[:,:,self.bias+1::self.DSrate]
         
         return input_ACSk_ri, target_ACSk_ri, input_k_ri, target_k_ri    
+     
+    def getBatch_G4_train(self, start, end):
+        end   = min([end,self.len])
+        batch = self.flist[start:end]
+        batch2= self.flist[ np.random.randint(0,high=self.len,size=end-start) ]
+         
+        sz_       = [end-start, self.nCh, self.nY, self.dsnX]
+        sz_ACS    = [end-start, self.nCh, self.nY, self.dsnACS]
+        sz_out    = [end-start, self.nCh*(self.DSrate-1), self.nY, self.dsnX]
+        sz_ACS_out= [end-start, self.nCh*(self.DSrate-1), self.nY, self.dsnACS]
+        target_ACSk_ri  = np.empty(sz_ACS_out, dtype=np.float32)
+        input_ACSk_ri   = np.empty(sz_ACS, dtype=np.float32)
+        target_k_ri     = np.empty(sz_out, dtype=np.float32)
+        input_k_ri      = np.empty(sz_, dtype=np.float32)
+
+        for iB, aBatch in enumerate(batch):
+            aTarget_k   = self.read_mat(join(self.root,aBatch),'orig_k')
+            bTarget_k   = self.read_mat(join(self.root,batch2[iB]),'orig_k')
+            aACS_k      = aTarget_k[:,:,self.ACS_s:self.ACS_e]
+            input_ACSk_ri[iB,:,:,:]  = aACS_k[:,:,self.bias::self.DSrate]
+            ACS1 = aACS_k[:,:,self.bias+1::self.DSrate]
+            ACS2 = aACS_k[:,:,self.bias+2::self.DSrate]
+            ACS3 = aACS_k[:,:,self.bias+3::self.DSrate]
+            
+            target_ACSk_ri[iB,:,:,:] = np.concatenate((ACS1,ACS2,ACS3),axis=0)
+            input_k_ri[iB,:,:,:]  = bTarget_k[:,:,self.bias::self.DSrate]
+            k1 = bTarget_k[:,:,self.bias+1::self.DSrate]
+            k2 = bTarget_k[:,:,self.bias+2::self.DSrate]
+            k3 = bTarget_k[:,:,self.bias+3::self.DSrate]
+            target_k_ri[iB,:,:,:] = np.concatenate((k1,k2,k3),axis=0) 
+        return input_ACSk_ri, target_ACSk_ri, input_k_ri, target_k_ri      
+
+    def getBatch_G4(self, start, end):
+        end   = min([end,self.len])
+        batch = self.flist[start:end]
+         
+        sz_       = [end-start, self.nCh, self.nY, self.dsnX]
+        sz_ACS    = [end-start, self.nCh, self.nY, self.dsnACS]
+        sz_out    = [end-start, self.nCh*(self.DSrate-1), self.nY, self.dsnX]
+        sz_ACS_out= [end-start, self.nCh*(self.DSrate-1), self.nY, self.dsnACS]
+        target_ACSk_ri  = np.empty(sz_ACS_out, dtype=np.float32)
+        input_ACSk_ri   = np.empty(sz_ACS, dtype=np.float32)
+        target_k_ri     = np.empty(sz_out, dtype=np.float32)
+        input_k_ri      = np.empty(sz_, dtype=np.float32)
+
+        for iB, aBatch in enumerate(batch):
+            aTarget_k   = self.read_mat(join(self.root,aBatch),'orig_k')
+#            if self.norm_ch:
+#                hnCh = int(self.nCh/2)
+#                for iCh in range(hnCh):
+#                    real_ = aTarget_k[iCh,:,:]
+#                    imag_ = aTarget_k[iCh+hnCh,:,:]
+#                    scale_= np.max( np.sqrt(real_*real_ + imag_*imag_) )
+#                    aTarget_k[iCh,:,:] = real_/scale_
+#                    aTarget_k[iCh+hnCh,:,:] = imag_/scale_
+
+            aACS_k      = aTarget_k[:,:,self.ACS_s:self.ACS_e]
+            input_ACSk_ri[iB,:,:,:]  = aACS_k[:,:,self.bias::self.DSrate]
+            ACS1 = aACS_k[:,:,self.bias+1::self.DSrate]
+            ACS2 = aACS_k[:,:,self.bias+2::self.DSrate]
+            ACS3 = aACS_k[:,:,self.bias+3::self.DSrate]
+            
+            target_ACSk_ri[iB,:,:,:] = np.concatenate((ACS1,ACS2,ACS3),axis=0)
+            input_k_ri[iB,:,:,:]  = aTarget_k[:,:,self.bias::self.DSrate]
+            k1 = aTarget_k[:,:,self.bias+1::self.DSrate]
+            k2 = aTarget_k[:,:,self.bias+2::self.DSrate]
+            k3 = aTarget_k[:,:,self.bias+3::self.DSrate]
+            target_k_ri[iB,:,:,:] = np.concatenate((k1,k2,k3),axis=0) 
+        return input_ACSk_ri, target_ACSk_ri, input_k_ri, target_k_ri    
+
+    def getBatch_G4_RAKI(self, start, end):
+        end   = min([end,self.len])
+        batch = self.flist[start:end]
+         
+        sz_       = [end-start, self.nCh, self.nY, self.dsnX]
+        sz_ACS    = [end-start, self.nCh, self.nY, self.dsnACS]
+        sz_out    = [end-start, self.nC, 2*(self.DSrate-1), self.nY, self.dsnX]
+        sz_ACS_out= [end-start, self.nC, 2*(self.DSrate-1), self.nY, self.dsnACS]
+        target_ACSk_ri  = np.empty(sz_ACS_out, dtype=np.float32)
+        input_ACSk_ri   = np.empty(sz_ACS, dtype=np.float32)
+        target_k_ri     = np.empty(sz_out, dtype=np.float32)
+        input_k_ri      = np.empty(sz_, dtype=np.float32)
+
+        for iB, aBatch in enumerate(batch):
+            aTarget_k   = self.read_mat(join(self.root,aBatch),'orig_k')
+            aACS_k      = aTarget_k[:,:,self.ACS_s:self.ACS_e]
+            input_ACSk_ri[iB,:,:,:]  = aACS_k[:,:,self.bias::self.DSrate]
+            target_ACSk_ri[iB,:,0,:,:] = aACS_k[:self.nC,:,self.bias+1::self.DSrate]
+            target_ACSk_ri[iB,:,1,:,:] = aACS_k[self.nC:,:,self.bias+1::self.DSrate]
+            target_ACSk_ri[iB,:,2,:,:] = aACS_k[:self.nC,:,self.bias+2::self.DSrate]
+            target_ACSk_ri[iB,:,3,:,:] = aACS_k[self.nC:,:,self.bias+2::self.DSrate]
+            target_ACSk_ri[iB,:,4,:,:] = aACS_k[:self.nC,:,self.bias+3::self.DSrate]
+            target_ACSk_ri[iB,:,5,:,:] = aACS_k[self.nC:,:,self.bias+3::self.DSrate]
+
+            input_k_ri[iB,:,:,:]  = aTarget_k[:,:,self.bias::self.DSrate]
+            target_k_ri[iB,:,0,:,:] = aTarget_k[:self.nC,:,self.bias+1::self.DSrate]
+            target_k_ri[iB,:,1,:,:] = aTarget_k[self.nC:,:,self.bias+1::self.DSrate]
+            target_k_ri[iB,:,2,:,:] = aTarget_k[:self.nC,:,self.bias+2::self.DSrate]
+            target_k_ri[iB,:,3,:,:] = aTarget_k[self.nC:,:,self.bias+2::self.DSrate]
+            target_k_ri[iB,:,4,:,:] = aTarget_k[:self.nC,:,self.bias+3::self.DSrate]
+            target_k_ri[iB,:,5,:,:] = aTarget_k[self.nC:,:,self.bias+3::self.DSrate]
+            
+            return input_ACSk_ri, target_ACSk_ri, input_k_ri, target_k_ri    
+
 
     def getBatch_G_(self, start, end):
         end   = min([end,self.len])

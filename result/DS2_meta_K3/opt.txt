@@ -19,6 +19,6 @@ name: DS2_meta_K3
 ngf: 512
 optimizer: Adam
 output_nc: 2
-smallDB: False
+smallDB: True
 use_kloss: False
 -------------- End ----------------

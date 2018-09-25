@@ -3,14 +3,14 @@ import tensorflow as tf
 #from tensorlayer.layers import InputLayer, Conv2d, MaxPool2d, DeConv2d, ConcatLayer
 import tensorflow.contrib.layers as li
 from ipdb import set_trace as st
-from util.netUtil import unet, gnet, Conv2dw, unet_wo_BN, Pool2d, Conv2dT, Conv2dTw
+from util.netUtil import unet, gnet,gnet2, Conv2dw, Pool2d, Conv2dT, Conv2dTw, CR, Conv1x1
 from util.util import myTFfftshift2, tf_imgri2kri, tf_kri2imgri, slice2ker__, slice2ker__b
 dtype = tf.float32
 d_form  = 'channels_first'
 d_form_ = 'NCHW'
 ch_dim  = 1
  
-def Unet_(inputs, n_out, nCh=16,weights=[],info_theta=[]):
+def Unet_(inputs, n_out, weights=[], info_theta=[],nCh=32):
     nB=1
     shape_lv0 = [nB,nCh, int(inputs.shape[2]),int(inputs.shape[3])]
     shape_lv1 = [nB,nCh*2, int(int(inputs.shape[2])/2),int(int(inputs.shape[3])/2)]
@@ -245,12 +245,107 @@ def Gnet_(inputs, n_out, weights=[], info_theta=[],nCh=32):
         weights_ = [w1,w2,w3]
         ##
         F1_1 = Conv2dw(inputs, w1, name_='G1')
-        #F1_1B= tf.layers.batch_normalization(F1_1,axis=ch_dim)
         F1_2 = tf.nn.relu(F1_1, name='G1R')
         F2_1 = Conv2dw(  F1_2, w2, name_='G2')
-        #F2_1B= tf.layers.batch_normalization(F2_1,axis=ch_dim)
         F2_2 = tf.nn.relu(F2_1, name='G2R')
         out_k_ri = Conv2dw(  F2_2, w3, name_='G3')
-        #out_k_ri = tf.tanh(out_k_ri)
         return out_k_ri, weights_
 
+def c2ws(weights, info_theta):
+    idx = 0
+    w_outs = []
+    for a_info_theta in info_theta:
+        idx, a_w = slice2ker__(weights, idx, a_info_theta)
+        w_outs.append(a_w)
+    return w_outs
+
+def Unet_wo_BN(inputs, n_out, weights=[], info_theta=[],nCh=32):
+    """ x : tensor or placeholder input [batch, row, col, channel]
+    n_out : numbet of output channel
+    """
+    nB=1
+    shape_lv0 = [nB,nCh, int(inputs.shape[2]),int(inputs.shape[3])]
+    shape_lv1 = [nB,nCh*2, int(int(inputs.shape[2])/2),int(int(inputs.shape[3])/2)]
+    ch_convt21= [2,2,nCh*2,nCh*4]
+    ch_convt10= [2,2,  nCh,nCh*2]
+    if weights==[]: 
+        reg_=None
+        with tf.variable_scope('dummy', reuse=False): 
+            down0_1     =    CR(   inputs,  nCh, name='lv0_1', reg=reg_)
+            down0_2     =    CR(  down0_1,  nCh, name='lv0_2', reg=reg_)
+        
+            pool1       = Pool2d(  down0_2, name='lv1_p')
+            down1_1     =    CR(    pool1,nCh*2, name='lv1_1', reg=reg_) 
+            down1_2     =    CR(  down1_1,nCh*2, name='lv1_2', reg=reg_)
+            
+            pool2       = Pool2d(  down1_2, name='lv2_p')
+            down2_1     =    CR(    pool2,nCh*4,  name='lv2_1', reg=reg_) 
+            down2_2     =    CR(  down2_1,nCh*4,  name='lv2_2', reg=reg_)
+            up2     = tf.nn.conv2d_transpose(down2_2, tf.ones(ch_convt21), shape_lv1,strides=[1,1,2,2],padding='VALID',data_format=d_form_,name='lv2__up')
+            
+            CC1         = tf.concat([down1_2, up2], axis=ch_dim, name='CC2')
+            up1_1       =    CR(      CC1, nCh*2,  name='lv1__1', reg=reg_)
+            up1_2       =    CR(    up1_1, nCh*2,  name='lv1__2', reg=reg_)
+            up1     = tf.nn.conv2d_transpose(up1_2, tf.ones(ch_convt10), shape_lv0,strides=[1,1,2,2],padding='VALID',data_format=d_form_,name='lv1__up')
+            
+            CC0         = tf.concat([down0_2, up1], axis=ch_dim, name='CC1')
+            up0_1       =    CR(      CC0,   nCh,  name='lv0__1', reg=reg_)
+            up0_2       =    CR(    up0_1,   nCh,  name='lv0__2', reg=reg_)
+            
+            return Conv1x1(   up0_2, n_out,name='conv1x1')
+    else:
+        _w = c2ws(weights,info_theta)
+        idx = 0
+        down0_1 =  tf.nn.relu( Conv2dw(  inputs, _w[idx], name_='lv0_1') ); idx+=1
+        down0_2 =  tf.nn.relu( Conv2dw( down0_1, _w[idx], name_='lv0_2') ); idx+=1
+
+        pool1   =  Pool2d(  down0_2, name='lv1_p')
+        down1_1 =  tf.nn.relu( Conv2dw(   pool1, _w[idx], name_='lv1_1') ); idx+=1
+        down1_2 =  tf.nn.relu( Conv2dw( down1_1, _w[idx], name_='lv1_2') ); idx+=1
+        
+        pool2   =  Pool2d(  down1_2, name='lv2_p')
+        down2_1 =  tf.nn.relu( Conv2dw(   pool2, _w[idx], name_='lv2_1') ); idx+=1
+        down2_2 =  tf.nn.relu( Conv2dw( down2_1, _w[idx], name_='lv2_2') ); idx+=1
+        up2     = tf.nn.conv2d_transpose(down2_2, tf.ones(ch_convt21), shape_lv1,strides=[1,1,2,2],padding='VALID',data_format=d_form_,name='lv2__up')
+       
+        CC1     =  tf.concat([down1_2, up2], axis=ch_dim, name='CC2')
+        up1_1   =  tf.nn.relu( Conv2dw(   CC1, _w[idx], name_='lv1__1') ); idx+=1
+        up1_2   =  tf.nn.relu( Conv2dw( up1_1, _w[idx], name_='lv1__2') ); idx+=1
+        up1     = tf.nn.conv2d_transpose(up1_2, tf.ones(ch_convt10), shape_lv0,strides=[1,1,2,2],padding='VALID',data_format=d_form_,name='lv1__up')     
+        
+        CC0     =  tf.concat([down0_2, up1], axis=ch_dim, name='CC1')
+        up0_1   =  tf.nn.relu( Conv2dw(   CC0, _w[idx], name_='lv0__1') ); idx+=1
+        up0_2   =  tf.nn.relu( Conv2dw( up0_1, _w[idx], name_='lv0__2') ); idx+=1
+        
+        out_k_ri = Conv2dw(  up0_2, _w[idx], name_='conv1x1')
+        return out_k_ri, _w
+
+
+#
+#def Gnet2_(inputs, n_out, weights=[], info_theta=[],nCh=32):
+#    """ x : tensor or placeholder input [batch, row, col, channel]
+#    n_out : numbet of output channel
+#    """
+#    if weights==[]:
+#        out_k_ri =  gnet2(inputs, n_out, True, nCh=nCh, scope='dummy')
+#        return out_k_ri
+#    else:
+#        idx, w1 = slice2ker__(weights,  0, info_theta[0])
+#        idx, w2 = slice2ker__(weights,idx, info_theta[1])
+#        idx, w3 = slice2ker__(weights,idx, info_theta[2])
+#        idx, w4 = slice2ker__(weights,idx, info_theta[3])
+#        idx, w5 = slice2ker__(weights,idx, info_theta[4])
+#     
+#        weights_ = [w1,w2,w3,w4,w5]
+#        ##
+#        F1_1 = Conv2dw(inputs, w1, name_='G1')
+#        F1_2 = tf.nn.relu(F1_1, name='G1R')
+#        F2_1 = Conv2dw(  F1_2, w2, name_='G2')
+#        F2_2 = tf.nn.relu(F2_1, name='G2R')
+#        F3_1 = Conv2dw(  F2_2, w3, name_='G3')
+#        F3_2 = tf.nn.relu(F3_1, name='G3R')      
+#        F4_1 = Conv2dw(  F3_2, w4, name_='G4')
+#        F4_2 = tf.nn.relu(F4_1, name='G4R')
+#        out_k_ri = Conv2dw(  F4_2, w5, name_='G5')
+#        return out_k_ri, weights_
+#
