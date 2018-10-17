@@ -228,10 +228,10 @@ class FewShotG:
             self.R = metaLearner(self.dummy_theta_shapes,Learner,  opt)
     
             with tf.variable_scope('state'):
-                self.c1 = tf.Variable(tf.truncated_normal([self.ntheta,opt.nHidden],-0.5,0.5),name='c1')
-                self.c2 = tf.Variable(tf.truncated_normal([self.ntheta,  1],-0.5,0.5),name='c2')
+                self.c1 = tf.Variable(tf.truncated_normal([self.ntheta,opt.nHidden],-0.1,0.1),name='c1')
+                self.c2 = tf.Variable(tf.truncated_normal([self.ntheta,  1],-0.1,0.1),name='c2')
                 self.f2 = tf.Variable(tf.ones([self.ntheta,1],name='f2'))
-                self.i2 = tf.Variable(tf.ones([self.ntheta,1],name='i2'))
+                self.i2 = tf.Variable(tf.zeros([self.ntheta,1],name='i2'))
                 
             self.THETA_              = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.R.name)
             self.THETA_state         = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='state')
@@ -239,7 +239,7 @@ class FewShotG:
             self.c1_init = tf.Variable(tf.zeros([self.ntheta,opt.nHidden]),trainable=False)
             self.c2_init = tf.Variable(tf.zeros([self.ntheta,1]),trainable=False)
             self.f2_init = tf.Variable(tf.ones([self.ntheta,1]),trainable=False)
-            self.i2_init = tf.Variable(tf.ones([self.ntheta,1]),trainable=False)
+            self.i2_init = tf.Variable(tf.zeros([self.ntheta,1]),trainable=False)
             ##------------------------------------------------------------------------------
         
             restore_c1 = tf.assign(self.c1, self.c1_init)
@@ -270,8 +270,8 @@ class FewShotG:
             self.net_out_test, _, self.loss_test =  self.R.learner_f(self.input_node_test,self.target_node_test,self.c2)
             self.cost_test      = tf.losses.mean_squared_error(labels=self.target_imgri_test,predictions=tf_kri2imgri(self.net_out_test))
             self.optimizer_ = tf.train.AdamOptimizer(learning_rate = self.lr_)
-            #self.optimizer2_ = tf.train.AdamOptimizer(learning_rate = self.lr_state_)
-            self.optimizer2_ = tf.train.GradientDescentOptimizer(learning_rate = self.lr_state_)
+            self.optimizer2_ = tf.train.AdamOptimizer(learning_rate = self.lr_state_)
+            #self.optimizer2_ = tf.train.GradientDescentOptimizer(learning_rate = self.lr_state_)
 
             #self.gvs_pre    = self.optimizer_.compute_gradients(self.loss_train, var_list=self.THETA_state)
             #self.optimizer_pre = self.optimizer_.apply_gradients(self.gvs_pre,global_step=self.global_step)

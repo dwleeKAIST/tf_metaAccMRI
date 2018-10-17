@@ -7,19 +7,16 @@ import copy
 from util.MyWeight import MyWeight
 from ipdb import set_trace as st
 
-DB_path1 = './../../mrdata/T1w_pad_8ch_x2_halfnY'
+DB_path1 = './../../mrdata/MRDB_4ch_stdCwise'
 
-class DB7T():
-    def __init__(self,opt,phase):#,dataroot='./../../mrdata/T1w_pad_8ch_x2_halfnY'):
-        super(DB7T, self).__init__()
+class DB3T():
+    def __init__(self,opt,phase):
+        super(DB3T, self).__init__()
         random.seed(0)
-        self.dataroot = opt.dataroot
+        self.dataroot = DB_path1#opt.dataroot
         self.root   = join(self.dataroot,phase)
         self.flist  = []
-
-        self.sel_8ch = [11,12,15,17,19,22,25,28,
-                43,44,47,49,51,54,57,60]
-
+        
         self.norm_ch = False#True
         list_fname = join(self.dataroot, 'DBset_'+phase+'.npy')
         if isfile(list_fname):
@@ -28,20 +25,17 @@ class DB7T():
         else:
             print('Now generating.... '+list_fname)
             flist=[]
-            for aDir in sorted(listdir(self.root)):
-                for aImg in sorted(listdir(join(self.root,aDir))):
-                    flist.append(join(aDir,aImg))
+            for aImg in sorted(listdir(self.root)):
+                flist.append(aImg)
             np.save(list_fname,flist)
             self.flist = flist
-        if opt.smallDB: 
-            self.flist = self.flist[0:int(len(self.flist)/10)]
-        self.nC   = 8 if self.dataroot == DB_path1 else 32
-        self.nCh  = 8*2 if (self.dataroot == DB_path1 or opt.model=='Gnet_DS4_8ch' or opt.model=='Gnet2_DS4_8ch') else 64 # nCh*Real/imag
-        self.nY   = 288#576
-        self.nX   = 288
+        self.nC   = 4 
+        self.nCh  = 4*2
+        self.nY   = 512
+        self.nX   = 256
         self.len  = len(self.flist) 
         self.DSrate = opt.DSrate
-        self.nACS = 32 if self.DSrate==2 or self.DSrate==4 else 36
+        self.nACS = 40
         self.dsnX   = int(self.nX/self.DSrate)
         self.len  = len(self.flist) 
         self.dsnACS = int(self.nACS/self.DSrate)
@@ -66,10 +60,6 @@ class DB7T():
         self.ACS_mask =np.zeros([self.nCh,self.nY,self.nX])
         self.ACS_mask[:,:,self.ACS_s:self.ACS_e]=1
 
-        myW = MyWeight(self.nY,self.nX,self.nCh,'1white')
-        self.w = myW.get_w()
-        self.uw= myW.get_uw()
-
     def getInfo(self,opt):
         opt.nCh_in = self.nCh
         opt.nCh_out = self.nCh*(self.DSrate-1)
@@ -87,23 +77,6 @@ class DB7T():
         opt.ACS_mask = self.ACS_mask
         return opt
     
-#    def getInfo_RAKI(self,opt):
-#        opt.nCh_in = int(self.nCh/2)
-#        opt.nCh_out = 2*(self.DSrate-1)
-#        opt.nY   = self.nY
-#        opt.nX   = self.nX
-#        opt.dsnX = self.dsnX
-#        opt.nACS = self.nACS
-#        opt.dsnACS=self.dsnACS
-#        opt.savepath  = './../../data/MRI/result'
-#        sdir = opt.savepath+'/'+opt.name+'/'
-#        opt.log_dir   = sdir+'log_dir/train'
-#        opt.log_dir_v = sdir+'log_dir/valid'
-#        opt.ckpt_dir  = sdir+'ckpt_dir'
-#        opt.hPad = int((self.nX-self.nACS)  /2)
-#        opt.ACS_mask = self.ACS_mask
-#        return opt
- 
     def getBatch(self, start, end):
         end   = min([end,self.len])
         batch = self.flist[start:end]
@@ -227,6 +200,7 @@ class DB7T():
             k3 = bTarget_k[:,:,self.bias+3::self.DSrate]
             target_k_ri[iB,:,:,:] = np.concatenate((k1,k2,k3),axis=0) 
         return input_ACSk_ri, target_ACSk_ri, input_k_ri, target_k_ri      
+
     def getBatch_G4(self, start, end):
         end   = min([end,self.len])
         batch = self.flist[start:end]
@@ -243,7 +217,7 @@ class DB7T():
         for iB, aBatch in enumerate(batch):
             aTarget_k   = self.read_mat(join(self.root,aBatch),'orig_k')
             if self.Aug:
-                aTarget_k = aTarget_k*np.random.normal(loc=1.0,scale=0.02)#5)
+                aTarget_k = aTarget_k*np.random.normal(loc=1.0,scale=0.02)
 
             aACS_k      = aTarget_k[:,:,self.ACS_s:self.ACS_e]
             input_ACSk_ri[iB,:,:,:]  = aACS_k[:,:,self.bias::self.DSrate]

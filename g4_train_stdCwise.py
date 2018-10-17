@@ -8,7 +8,7 @@ from options.baseOptions import BaseOptions
 from math import ceil
 #from model.myRNN import myDoubleLSTM as metaLearner
 from model.myRNN2 import myLSTM as metaLearner
-from model.FewShot2 import FewShotG as myModel
+from model.FewShot2stdCwise import FewShotG as myModel
 #from model.FewShot import FewShotG as myModel
 # options to init
 opt = BaseOptions().parse()
@@ -26,14 +26,10 @@ if opt.model == 'Gnet_':
     from model.learner import Gnet_ as Learner
 elif opt.model == 'Gnet2_':
     from model.learner import Gnet2_ as Learner
-elif opt.model == 'Gnet2_DS4_8ch':
-    from model.learner import Gnet2_DS4_8ch as Learner
 elif opt.model == 'Gnet_DS4_8ch':
     from model.learner import Gnet_DS4_8ch as Learner
 elif opt.model == 'Gnet_DS4':
     from model.learner import Gnet_DS4 as Learner
-elif opt.model == 'Gnet2_DS4':
-    from model.learner import Gnet2_DS4 as Learner
 elif opt.model == 'Gnet_DS4_wchange':
     from model.learner import Gnet_DS4 as Learner
 elif opt.model == 'Gnetb_DS4':
@@ -63,9 +59,9 @@ if opt.debug_mode:
 disp_step_train = ceil(opt.nStep_train/opt.disp_div_N)
 disp_step_valid = ceil(opt.nStep_valid/opt.disp_div_N)
 if opt.DSrate==4:
-    func_getBatch = DB_train.getBatch_G4
-    func_getBatchv = DB_valid.getBatch_G4
-    func_getBatcht = DB_test.getBatch_G4
+    func_getBatch = DB_train.getBatch_G4_std_sel8
+    func_getBatchv = DB_valid.getBatch_G4_std_sel8
+    func_getBatcht = DB_test.getBatch_G4_std_sel8
 elif opt.DSrate==6:
     func_getBatch = DB_train.getBatch_G6
     func_getBatchv = DB_valid.getBatch_G6
@@ -103,7 +99,6 @@ with tf.Session(config=config) as sess:
         #if os.path.isfile(init_+".meta"):
         #    saver.restore(sess, init_)
     else:
-        st()
         print("Start from saved model -"+latest_ckpt)
         saver.restore(sess, latest_ckpt)
         epoch_start=myNumExt(latest_ckpt)+1
@@ -125,13 +120,12 @@ with tf.Session(config=config) as sess:
             t_i_1 = time.time()
             out_argm = [myFS.loss_test, myFS.optimizer_simul, myFS.save_states,  myFS.merged_all]
             out_arg  = [myFS.loss_test, myFS.optimizer_simul, myFS.save_states ]
-
-            ## step iter goes on here
+       
             for step in range(opt.nStep_train):
-                _input_ACSk, _target_ACSk, _input_k, _target_k = func_getBatch(step*nB, (step+1)*nB)
+                _input_ACSk, _target_ACSk, _input_k, _target_k, _scale_std = func_getBatch(step*nB, (step+1)*nB)
                 
                 myFS.restore_state(sess)
-                feed_dict={myFS.input_node_train: _input_ACSk, myFS.target_node_train: _target_ACSk, myFS.input_node_test: _input_k, myFS.target_node_test:_target_k,myFS.is_Training:True}
+                feed_dict={myFS.input_node_train: _input_ACSk, myFS.target_node_train: _target_ACSk, myFS.input_node_test: _input_k, myFS.target_node_test:_target_k,myFS.is_Training:True, myFS.scale:_scale_std}
                 if step%disp_step_train==0 or step==0:
                     results = sess.run(out_argm,feed_dict=feed_dict)
                     summary_writer.add_summary(results[-1], iEpoch*opt.disp_div_N+disp_cnt)
@@ -149,8 +143,8 @@ with tf.Session(config=config) as sess:
             
             for step in range(opt.nStep_valid):
                 myFS.restore_state(sess)
-                _input_ACSk, _target_ACSk, _input_k, _target_k = func_getBatchv(step*opt.batchSize, (step+1)*opt.batchSize)
-                feed_dict = {myFS.input_node_train: _input_ACSk, myFS.target_node_train: _target_ACSk, myFS.input_node_test: _input_k, myFS.target_node_test:_target_k,myFS.is_Training:False}
+                _input_ACSk, _target_ACSk, _input_k, _target_k, _scale_std = func_getBatchv(step*opt.batchSize, (step+1)*opt.batchSize)
+                feed_dict = {myFS.input_node_train: _input_ACSk, myFS.target_node_train: _target_ACSk, myFS.input_node_test: _input_k, myFS.target_node_test:_target_k,myFS.is_Training:False, myFS.scale:_scale_std}
                 if step%disp_step_valid==0 or step==0:
                     loss_test_valid, merged = sess.run([myFS.loss_test, myFS.merged_all], feed_dict=feed_dict)
                     summary_writer_v.add_summary(merged, iEpoch*opt.disp_div_N+disp_cnt)
@@ -171,8 +165,8 @@ with tf.Session(config=config) as sess:
         t_i_t = time.time()
         for step in range(opt.nStep_test):
             myFS.restore_state(sess)
-            _input_ACSk, _target_ACSk, _input_k, _target_k = func_getBatcht(step*opt.batchSize, (step+1)*opt.batchSize)
-            feed_dict = {myFS.input_node_train: _input_ACSk, myFS.target_node_train: _target_ACSk, myFS.input_node_test: _input_k, myFS.target_node_test:_target_k,myFS.is_Training:False}
+            _input_ACSk, _target_ACSk, _input_k, _target_k,_scale_std = func_getBatcht(step*opt.batchSize, (step+1)*opt.batchSize)
+            feed_dict = {myFS.input_node_train: _input_ACSk, myFS.target_node_train: _target_ACSk, myFS.input_node_test: _input_k, myFS.target_node_test:_target_k,myFS.is_Training:False,myFS.scale:_scale_std}
             loss_test_test, tar_ssos, rec_ssos, rec_proj_ssos = sess.run(out_arg, feed_dict=feed_dict)
             sum_loss_test+= loss_test_test
             

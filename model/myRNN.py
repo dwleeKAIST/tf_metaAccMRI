@@ -33,7 +33,7 @@ def preProc(x):
 
 class myDoubleLSTM:
     def __init__(self, dummy_theta_shapes, Learner, opt):
-        self.nInput1  = 1#  4
+        self.nInput1  =   4
         self.nHidden1 = opt.nHidden
         self.Learner  = Learner
         self.kloss    = opt.use_kloss
@@ -53,12 +53,12 @@ class myDoubleLSTM:
             self.WF2 = tf.Variable(tf.truncated_normal([self.nInput2+2, 1],-0.1,0.1),name='WF2')
             self.WI2 = tf.Variable(tf.truncated_normal([self.nInput2+2, 1],-0.1,0.1),name='WI2')
             self.bF2 = tf.Variable(5.,name='bF2')
-            self.bI2 = tf.Variable(5.,name='bI2')
+            self.bI2 = tf.Variable(-5.,name='bI2')
 
 
         self.THETA = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name)
         ## Learner parameter
-        self.nCh_out = 2# 16
+        self.nCh_out = opt.nCh_out#2# 16
         self.info_theta = dummy_theta_shapes
 
     def LSTM1_f(self,x,c_prev,h_prev=[]):
@@ -71,8 +71,8 @@ class myDoubleLSTM:
 
         #for istep in range(steps):
         if True:
-            #dots  = tf.matmul( tf.concat([x[:,0,:],h_prev],axis=1), self.W1 ) + self.b1
-            dots  = tf.matmul( tf.concat([x,h_prev],axis=1), self.W1 ) + self.b1
+            dots  = tf.matmul( tf.concat([x[:,0,:],h_prev],axis=1), self.W1 ) + self.b1
+            #dots  = tf.matmul( tf.concat([x,h_prev],axis=1), self.W1 ) + self.b1
             dots_ = tf.reshape( dots, [self.nBtheta, 4, self.nHidden1])
             I     = tf.sigmoid( dots_[:,0,:])
             F     = tf.sigmoid( dots_[:,1,:])
@@ -102,16 +102,15 @@ class myDoubleLSTM:
             delta_prev = tf.zeros([self.nBtheta,1])
         steps = 1#x2_h.shape[1]
         #for istep in range(steps):
-        if True:
-            f_cur_ = tf.matmul(  tf.concat([ x2_h, c_prev, f_prev], axis=1), self.WF2 ) + self.bF2
-            i_cur_ = tf.matmul(  tf.concat([ x2_h, c_prev, i_prev], axis=1), self.WI2 ) + self.bI2
-
-
-            i_cur     = tf.sigmoid(i_cur_)
-            f_cur     = tf.sigmoid(f_cur_)
-            #
-            delta_cur = self.moment*delta_prev - i_cur*x2_grad
-            c_cur = f_cur * c_prev + delta_cur
+        f_cur_ = tf.matmul(  tf.concat([ x2_h, c_prev, f_prev], axis=1), self.WF2 ) + self.bF2
+        i_cur_ = tf.matmul(  tf.concat([ x2_h, c_prev, i_prev], axis=1), self.WI2 ) + self.bI2
+        
+        
+        i_cur     = tf.sigmoid(i_cur_)
+        f_cur     = tf.sigmoid(f_cur_)
+        #
+        delta_cur = self.moment*delta_prev - i_cur*x2_grad
+        c_cur = f_cur * c_prev + delta_cur
         return c_cur, f_cur, i_cur, delta_cur
 
     def f(self, k_shot, x, y, c1_prev, c2_prev, f2_prev,i2_prev,is_Training): 
@@ -125,11 +124,11 @@ class myDoubleLSTM:
             # later check
             loss, grad_thetas = self.learner_df(x,y,c2_prev) # loss : 1x1, grad_thetas : 2112 x 1 x1        
             losses.append(loss)
-            #pre_loss          = tf.stack( preProc(loss))
-            #preLoss_          = tf.tile(pre_loss[tf.newaxis,tf.newaxis,:], [grad_thetas.shape[0],1,1])  #    2112 x 1 x 2
-            #preGrad           = tf.stack(preProc(grad_thetas),axis=2)        # 2112 x 1 x 2
-            #x1_inp            = tf.concat([preLoss_,preGrad],axis=2) # 2112 x1 x4
-            x1_inp            = grad_thetas
+            pre_loss          = tf.stack( preProc(loss))
+            preLoss_          = tf.tile(pre_loss[tf.newaxis,tf.newaxis,:], [grad_thetas.shape[0],1,1])  #    2112 x 1 x 2
+            preGrad           = tf.stack(preProc(grad_thetas),axis=2)        # 2112 x 1 x 2
+            x1_inp            = tf.concat([preLoss_,preGrad],axis=2) # 2112 x1 x4
+            #x1_inp            = grad_thetas
             #
             c1_cur, h1_cur    = self.LSTM1_f(x1_inp,c1_prev,h_prev=h1_prev)
             c2_cur, f2_cur, i2_cur,delta_cur = self.LSTM2_f(h1_cur,grad_thetas, c2_prev, f2_prev, i2_prev, delta_prev)

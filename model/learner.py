@@ -3,7 +3,7 @@ import tensorflow as tf
 #from tensorlayer.layers import InputLayer, Conv2d, MaxPool2d, DeConv2d, ConcatLayer
 import tensorflow.contrib.layers as li
 from ipdb import set_trace as st
-from util.netUtil import unet, gnet,gnet2, Conv2dw, Pool2d, Conv2dT, Conv2dTw, CR, Conv1x1
+from util.netUtil import unet, gnet,gnet2, Conv2dw, Pool2d, Conv2dT, Conv2dTw, CR, Conv1x1,gnet_DS4, gnet_DS4_32ch,gnet2_DS4, gnet2_DS4_32ch, gnetb_DS4_32ch, gnet_DS6_32ch
 from util.util import myTFfftshift2, tf_imgri2kri, tf_kri2imgri, slice2ker__, slice2ker__b
 dtype = tf.float32
 d_form  = 'channels_first'
@@ -258,6 +258,843 @@ def c2ws(weights, info_theta):
         idx, a_w = slice2ker__(weights, idx, a_info_theta)
         w_outs.append(a_w)
     return w_outs
+'''with BIAS'''
+def Gnetb_DS4(inputs, n_out, weights=[], info_theta=[],nCh=32):
+    """ x : tensor or placeholder input [batch, row, col, channel]
+    n_out : numbet of output channel
+    """
+    n_out_C = 6
+    if weights==[]:
+        out_k_ri =  gnetb_DS4_32ch(inputs, n_out, True, nCh=nCh, scope='dummy')
+        return out_k_ri
+    else:
+        _w = c2ws(weights,info_theta)
+        ##
+        idx = 0
+        ##
+        str_ ='_C1'
+        F1_1 = tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_1 = tf.nn.relu( Conv2dw(  F1_1, _w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C1   =             Conv2dw(  F2_1, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C2'
+        F1_2 = tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_2 = tf.nn.relu( Conv2dw(  F1_2, _w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C2   =             Conv2dw(  F2_2, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C3'
+        F1_3 = tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_3 = tf.nn.relu( Conv2dw(  F1_3, _w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C3   =             Conv2dw(  F2_3, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C4'
+        F1_4 = tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_4 = tf.nn.relu( Conv2dw(  F1_4, _w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C4   =             Conv2dw(  F2_4, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C5'
+        F1_5 = tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_5 = tf.nn.relu( Conv2dw(  F1_5, _w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C5   =             Conv2dw(  F2_5, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C6'
+        F1_6 = tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_6 = tf.nn.relu( Conv2dw(  F1_6, _w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C6   =             Conv2dw(  F2_6, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C7'
+        F1_7 = tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_7 = tf.nn.relu( Conv2dw(  F1_7, _w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C7   =             Conv2dw(  F2_7, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C8'
+        F1_8 = tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_8 = tf.nn.relu( Conv2dw(  F1_8, _w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C8   =             Conv2dw(  F2_8, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C9'
+        F1_9 = tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_9 = tf.nn.relu( Conv2dw(  F1_9, _w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C9   =             Conv2dw(  F2_9, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C10'
+        F1_10= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_10= tf.nn.relu( Conv2dw(  F1_10,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C10  =             Conv2dw(  F2_10,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C11'
+        F1_11= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_11= tf.nn.relu( Conv2dw(  F1_11,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C11  =             Conv2dw(  F2_11,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C12'
+        F1_12= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_12= tf.nn.relu( Conv2dw(  F1_12,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C12  =             Conv2dw(  F2_12,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C13'
+        F1_13= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_13= tf.nn.relu( Conv2dw(  F1_13,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C13  =             Conv2dw(  F2_13,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C14'
+        F1_14= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_14= tf.nn.relu( Conv2dw(  F1_14,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C14  =             Conv2dw(  F2_14,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C15'
+        F1_15= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_15= tf.nn.relu( Conv2dw(  F1_15,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C15  =             Conv2dw(  F2_15,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C16'
+        F1_16= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_16= tf.nn.relu( Conv2dw(  F1_16,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C16  =             Conv2dw(  F2_16,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C17'
+        F1_17= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_17= tf.nn.relu( Conv2dw(  F1_17,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C17  =             Conv2dw(  F2_17,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C18'
+        F1_18= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_18= tf.nn.relu( Conv2dw(  F1_18,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C18  =             Conv2dw(  F2_18,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C19'
+        F1_19= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_19= tf.nn.relu( Conv2dw(  F1_19,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C19  =             Conv2dw(  F2_19,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C20'
+        F1_20= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_20= tf.nn.relu( Conv2dw(  F1_20,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C20  =             Conv2dw(  F2_20,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C21'
+        F1_21= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_21= tf.nn.relu( Conv2dw(  F1_21,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C21  =             Conv2dw(  F2_21,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C22'
+        F1_22= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_22= tf.nn.relu( Conv2dw(  F1_22,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C22  =             Conv2dw(  F2_22,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C23'
+        F1_23= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_23= tf.nn.relu( Conv2dw(  F1_23,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C23  =             Conv2dw(  F2_23,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C24'
+        F1_24= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_24= tf.nn.relu( Conv2dw(  F1_24,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C24  =             Conv2dw(  F2_24,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C25'
+        F1_25= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_25= tf.nn.relu( Conv2dw(  F1_25,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C25  =             Conv2dw(  F2_25,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C26'
+        F1_26= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_26= tf.nn.relu( Conv2dw(  F1_26,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C26  =             Conv2dw(  F2_26,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C27'
+        F1_27= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_27= tf.nn.relu( Conv2dw(  F1_27,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C27  =             Conv2dw(  F2_27,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C28'
+        F1_28= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_28= tf.nn.relu( Conv2dw(  F1_28,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C28  =             Conv2dw(  F2_28,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C29'
+        F1_29= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_29= tf.nn.relu( Conv2dw(  F1_29,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C29  =             Conv2dw(  F2_29,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C30'
+        F1_30= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_30= tf.nn.relu( Conv2dw(  F1_30,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C30  =             Conv2dw(  F2_30,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C31'
+        F1_31= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_31= tf.nn.relu( Conv2dw(  F1_31,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C31  =             Conv2dw(  F2_31,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C32'
+        F1_32= tf.nn.relu( Conv2dw(inputs, _w[idx], b=_w[idx+1], name_='G1'+str_)); idx+=2
+        F2_32= tf.nn.relu( Conv2dw(  F1_32,_w[idx], b=_w[idx+1], name_='G2'+str_)); idx+=2
+        C32  =             Conv2dw(  F2_32,_w[idx], name_='G3'+str_) ; idx+=1
+
+
+        ## ordering DS[1,2,3] - [real,imag] - ch[1,2,3,4,5,6,7,8]
+        tmp_cc = tf.concat([C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,
+            C11,C12,C13,C14,C15,C16,C17,C18,C19,C20,
+            C21,C22,C23,C24,C25,C26,C27,C28,C29,C30,
+            C31,C32],axis=ch_dim)
+        K1_real = tf.strided_slice(tmp_cc,[0,0,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K1_imag = tf.strided_slice(tmp_cc,[0,1,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K2_real = tf.strided_slice(tmp_cc,[0,2,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K2_imag = tf.strided_slice(tmp_cc,[0,3,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K3_real = tf.strided_slice(tmp_cc,[0,4,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K3_imag = tf.strided_slice(tmp_cc,[0,5,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+
+        out_k_ri = tf.concat([K1_real,K1_imag, K2_real, K2_imag, K3_real, K3_imag],axis=ch_dim)
+        return out_k_ri, _w
+
+def gnet2_DS4_1C(inputs, _w, idx, str_):
+    F1_1 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+    F2_1 = tf.nn.relu( Conv2dw(  F1_1, _w[idx], name_='G2'+str_)); idx+=1
+    F3_1 = tf.nn.relu( Conv2dw(  F2_1, _w[idx], name_='G3'+str_)); idx+=1
+    C1   =             Conv2dw(  F3_1, _w[idx], name_='G4'+str_) ; idx+=1
+    return C1, idx
+
+def Gnet2_DS4(inputs, n_out, weights=[], info_theta=[],nCh=32):
+    """ x : tensor or placeholder input [batch, row, col, channel]
+    n_out : numbet of output channel
+    """
+    n_out_C = 6
+    if weights==[]:
+        out_k_ri =  gnet2_DS4_32ch(inputs, n_out, True, nCh=nCh, scope='dummy')
+
+        return out_k_ri
+    else:
+        _w = c2ws(weights,info_theta)
+        ##
+        idx = 0
+        ##
+        str_ ='_C1'
+        C1, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        ##
+        str_ ='_C2'
+        C2, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        #
+        str_ ='_C3'
+        C3, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        ##
+        str_ ='_C4'
+        C4, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        ##
+        str_ ='_C5'
+        C5, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        ##
+        str_ ='_C6'
+        C6, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        #
+        str_ ='_C7'
+        C7, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        ##
+        str_ ='_C8'
+        C8, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        ##
+        str_ ='_C9'
+        C9, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        ##
+        str_ ='_C10'
+        C10, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C11'
+        C11, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C12'
+        C12, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C13'
+        C13, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C14'
+        C14, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C15'
+        C15, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C16'
+        C16, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C17'
+        C17, idx = gnet2_DS4_1C(inputs, _w, idx, str_)##
+        str_ ='_C18'
+        C18, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C19'
+        C19, idx = gnet2_DS4_1C(inputs, _w, idx, str_)##
+        str_ ='_C20'
+        C20, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        ##
+        str_ ='_C21'
+        C21, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C22'
+        C22, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C23'
+        C23, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C24'
+        C24, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C25'
+        C25, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C26'
+        C26, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C27'
+        C27, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C28'
+        C28, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C29'
+        C29, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C30'
+        C30, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        ##
+        str_ ='_C31'
+        C31, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+        str_ ='_C32'
+        C32, idx = gnet2_DS4_1C(inputs, _w, idx, str_)
+
+        ## ordering DS[1,2,3] - [real,imag] - ch[1,2,3,4,5,6,7,8]
+        tmp_cc = tf.concat([C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,
+            C11,C12,C13,C14,C15,C16,C17,C18,C19,C20,
+            C21,C22,C23,C24,C25,C26,C27,C28,C29,C30,
+            C31,C32],axis=ch_dim)
+        K1_real = tf.strided_slice(tmp_cc,[0,0,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K1_imag = tf.strided_slice(tmp_cc,[0,1,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K2_real = tf.strided_slice(tmp_cc,[0,2,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K2_imag = tf.strided_slice(tmp_cc,[0,3,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K3_real = tf.strided_slice(tmp_cc,[0,4,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K3_imag = tf.strided_slice(tmp_cc,[0,5,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+
+        out_k_ri = tf.concat([K1_real,K1_imag, K2_real, K2_imag, K3_real, K3_imag],axis=ch_dim)
+        return out_k_ri, _w
+
+
+def Gnet_DS4(inputs, n_out, weights=[], info_theta=[],nCh=32):
+    """ x : tensor or placeholder input [batch, row, col, channel]
+    n_out : numbet of output channel
+    """
+    n_out_C = 6
+    if weights==[]:
+        out_k_ri =  gnet_DS4_32ch(inputs, n_out, True, nCh=nCh, scope='dummy')
+
+        return out_k_ri
+    else:
+        _w = c2ws(weights,info_theta)
+        ##
+        idx = 0
+        ##
+        str_ ='_C1'
+        F1_1 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_1 = tf.nn.relu( Conv2dw(  F1_1, _w[idx], name_='G2'+str_)); idx+=1
+        C1   =             Conv2dw(  F2_1, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C2'
+        F1_2 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_2 = tf.nn.relu( Conv2dw(  F1_2, _w[idx], name_='G2'+str_)); idx+=1
+        C2   =             Conv2dw(  F2_2, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C3'
+        F1_3 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_3 = tf.nn.relu( Conv2dw(  F1_3, _w[idx], name_='G2'+str_)); idx+=1
+        C3   =             Conv2dw(  F2_3, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C4'
+        F1_4 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_4 = tf.nn.relu( Conv2dw(  F1_4, _w[idx], name_='G2'+str_)); idx+=1
+        C4   =             Conv2dw(  F2_4, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C5'
+        F1_5 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_5 = tf.nn.relu( Conv2dw(  F1_5, _w[idx], name_='G2'+str_)); idx+=1
+        C5   =             Conv2dw(  F2_5, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C6'
+        F1_6 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_6 = tf.nn.relu( Conv2dw(  F1_6, _w[idx], name_='G2'+str_)); idx+=1
+        C6   =             Conv2dw(  F2_6, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C7'
+        F1_7 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_7 = tf.nn.relu( Conv2dw(  F1_7, _w[idx], name_='G2'+str_)); idx+=1
+        C7   =             Conv2dw(  F2_7, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C8'
+        F1_8 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_8 = tf.nn.relu( Conv2dw(  F1_8, _w[idx], name_='G2'+str_)); idx+=1
+        C8   =             Conv2dw(  F2_8, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C9'
+        F1_9 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_9 = tf.nn.relu( Conv2dw(  F1_9, _w[idx], name_='G2'+str_)); idx+=1
+        C9   =             Conv2dw(  F2_9, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C10'
+        F1_10= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_10= tf.nn.relu( Conv2dw(  F1_10,_w[idx], name_='G2'+str_)); idx+=1
+        C10  =             Conv2dw(  F2_10,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C11'
+        F1_11= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_11= tf.nn.relu( Conv2dw(  F1_11,_w[idx], name_='G2'+str_)); idx+=1
+        C11  =             Conv2dw(  F2_11,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C12'
+        F1_12= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_12= tf.nn.relu( Conv2dw(  F1_12,_w[idx], name_='G2'+str_)); idx+=1
+        C12  =             Conv2dw(  F2_12,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C13'
+        F1_13= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_13= tf.nn.relu( Conv2dw(  F1_13,_w[idx], name_='G2'+str_)); idx+=1
+        C13  =             Conv2dw(  F2_13,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C14'
+        F1_14= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_14= tf.nn.relu( Conv2dw(  F1_14,_w[idx], name_='G2'+str_)); idx+=1
+        C14  =             Conv2dw(  F2_14,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C15'
+        F1_15= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_15= tf.nn.relu( Conv2dw(  F1_15,_w[idx], name_='G2'+str_)); idx+=1
+        C15  =             Conv2dw(  F2_15,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C16'
+        F1_16= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_16= tf.nn.relu( Conv2dw(  F1_16,_w[idx], name_='G2'+str_)); idx+=1
+        C16  =             Conv2dw(  F2_16,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C17'
+        F1_17= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_17= tf.nn.relu( Conv2dw(  F1_17,_w[idx], name_='G2'+str_)); idx+=1
+        C17  =             Conv2dw(  F2_17,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C18'
+        F1_18= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_18= tf.nn.relu( Conv2dw(  F1_18,_w[idx], name_='G2'+str_)); idx+=1
+        C18  =             Conv2dw(  F2_18,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C19'
+        F1_19= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_19= tf.nn.relu( Conv2dw(  F1_19,_w[idx], name_='G2'+str_)); idx+=1
+        C19  =             Conv2dw(  F2_19,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C20'
+        F1_20= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_20= tf.nn.relu( Conv2dw(  F1_20,_w[idx], name_='G2'+str_)); idx+=1
+        C20  =             Conv2dw(  F2_20,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C21'
+        F1_21= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_21= tf.nn.relu( Conv2dw(  F1_21,_w[idx], name_='G2'+str_)); idx+=1
+        C21  =             Conv2dw(  F2_21,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C22'
+        F1_22= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_22= tf.nn.relu( Conv2dw(  F1_22,_w[idx], name_='G2'+str_)); idx+=1
+        C22  =             Conv2dw(  F2_22,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C23'
+        F1_23= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_23= tf.nn.relu( Conv2dw(  F1_23,_w[idx], name_='G2'+str_)); idx+=1
+        C23  =             Conv2dw(  F2_23,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C24'
+        F1_24= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_24= tf.nn.relu( Conv2dw(  F1_24,_w[idx], name_='G2'+str_)); idx+=1
+        C24  =             Conv2dw(  F2_24,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C25'
+        F1_25= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_25= tf.nn.relu( Conv2dw(  F1_25,_w[idx], name_='G2'+str_)); idx+=1
+        C25  =             Conv2dw(  F2_25,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C26'
+        F1_26= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_26= tf.nn.relu( Conv2dw(  F1_26,_w[idx], name_='G2'+str_)); idx+=1
+        C26  =             Conv2dw(  F2_26,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C27'
+        F1_27= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_27= tf.nn.relu( Conv2dw(  F1_27,_w[idx], name_='G2'+str_)); idx+=1
+        C27  =             Conv2dw(  F2_27,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C28'
+        F1_28= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_28= tf.nn.relu( Conv2dw(  F1_28,_w[idx], name_='G2'+str_)); idx+=1
+        C28  =             Conv2dw(  F2_28,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C29'
+        F1_29= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_29= tf.nn.relu( Conv2dw(  F1_29,_w[idx], name_='G2'+str_)); idx+=1
+        C29  =             Conv2dw(  F2_29,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C30'
+        F1_30= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_30= tf.nn.relu( Conv2dw(  F1_30,_w[idx], name_='G2'+str_)); idx+=1
+        C30  =             Conv2dw(  F2_30,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C31'
+        F1_31= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_31= tf.nn.relu( Conv2dw(  F1_31,_w[idx], name_='G2'+str_)); idx+=1
+        C31  =             Conv2dw(  F2_31,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C32'
+        F1_32= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_32= tf.nn.relu( Conv2dw(  F1_32,_w[idx], name_='G2'+str_)); idx+=1
+        C32  =             Conv2dw(  F2_32,_w[idx], name_='G3'+str_) ; idx+=1
+
+
+        ## ordering DS[1,2,3] - [real,imag] - ch[1,2,3,4,5,6,7,8]
+        tmp_cc = tf.concat([C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,
+            C11,C12,C13,C14,C15,C16,C17,C18,C19,C20,
+            C21,C22,C23,C24,C25,C26,C27,C28,C29,C30,
+            C31,C32],axis=ch_dim)
+        K1_real = tf.strided_slice(tmp_cc,[0,0,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K1_imag = tf.strided_slice(tmp_cc,[0,1,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K2_real = tf.strided_slice(tmp_cc,[0,2,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K2_imag = tf.strided_slice(tmp_cc,[0,3,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K3_real = tf.strided_slice(tmp_cc,[0,4,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K3_imag = tf.strided_slice(tmp_cc,[0,5,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+
+        out_k_ri = tf.concat([K1_real,K1_imag, K2_real, K2_imag, K3_real, K3_imag],axis=ch_dim)
+        return out_k_ri, _w
+
+       
+def Gnet_DS6(inputs, n_out, weights=[], info_theta=[],nCh=32):
+    """ x : tensor or placeholder input [batch, row, col, channel]
+    n_out : numbet of output channel
+    """
+    n_out_C = 10
+    if weights==[]:
+        out_k_ri =  gnet_DS6_32ch(inputs, n_out, True, nCh=nCh, scope='dummy')
+
+        return out_k_ri
+    else:
+        _w = c2ws(weights,info_theta)
+        ##
+        idx = 0
+        ##
+        str_ ='_C1'
+        F1_1 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_1 = tf.nn.relu( Conv2dw(  F1_1, _w[idx], name_='G2'+str_)); idx+=1
+        C1   =             Conv2dw(  F2_1, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C2'
+        F1_2 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_2 = tf.nn.relu( Conv2dw(  F1_2, _w[idx], name_='G2'+str_)); idx+=1
+        C2   =             Conv2dw(  F2_2, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C3'
+        F1_3 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_3 = tf.nn.relu( Conv2dw(  F1_3, _w[idx], name_='G2'+str_)); idx+=1
+        C3   =             Conv2dw(  F2_3, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C4'
+        F1_4 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_4 = tf.nn.relu( Conv2dw(  F1_4, _w[idx], name_='G2'+str_)); idx+=1
+        C4   =             Conv2dw(  F2_4, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C5'
+        F1_5 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_5 = tf.nn.relu( Conv2dw(  F1_5, _w[idx], name_='G2'+str_)); idx+=1
+        C5   =             Conv2dw(  F2_5, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C6'
+        F1_6 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_6 = tf.nn.relu( Conv2dw(  F1_6, _w[idx], name_='G2'+str_)); idx+=1
+        C6   =             Conv2dw(  F2_6, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C7'
+        F1_7 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_7 = tf.nn.relu( Conv2dw(  F1_7, _w[idx], name_='G2'+str_)); idx+=1
+        C7   =             Conv2dw(  F2_7, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C8'
+        F1_8 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_8 = tf.nn.relu( Conv2dw(  F1_8, _w[idx], name_='G2'+str_)); idx+=1
+        C8   =             Conv2dw(  F2_8, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C9'
+        F1_9 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_9 = tf.nn.relu( Conv2dw(  F1_9, _w[idx], name_='G2'+str_)); idx+=1
+        C9   =             Conv2dw(  F2_9, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C10'
+        F1_10= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_10= tf.nn.relu( Conv2dw(  F1_10,_w[idx], name_='G2'+str_)); idx+=1
+        C10  =             Conv2dw(  F2_10,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C11'
+        F1_11= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_11= tf.nn.relu( Conv2dw(  F1_11,_w[idx], name_='G2'+str_)); idx+=1
+        C11  =             Conv2dw(  F2_11,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C12'
+        F1_12= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_12= tf.nn.relu( Conv2dw(  F1_12,_w[idx], name_='G2'+str_)); idx+=1
+        C12  =             Conv2dw(  F2_12,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C13'
+        F1_13= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_13= tf.nn.relu( Conv2dw(  F1_13,_w[idx], name_='G2'+str_)); idx+=1
+        C13  =             Conv2dw(  F2_13,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C14'
+        F1_14= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_14= tf.nn.relu( Conv2dw(  F1_14,_w[idx], name_='G2'+str_)); idx+=1
+        C14  =             Conv2dw(  F2_14,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C15'
+        F1_15= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_15= tf.nn.relu( Conv2dw(  F1_15,_w[idx], name_='G2'+str_)); idx+=1
+        C15  =             Conv2dw(  F2_15,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C16'
+        F1_16= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_16= tf.nn.relu( Conv2dw(  F1_16,_w[idx], name_='G2'+str_)); idx+=1
+        C16  =             Conv2dw(  F2_16,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C17'
+        F1_17= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_17= tf.nn.relu( Conv2dw(  F1_17,_w[idx], name_='G2'+str_)); idx+=1
+        C17  =             Conv2dw(  F2_17,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C18'
+        F1_18= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_18= tf.nn.relu( Conv2dw(  F1_18,_w[idx], name_='G2'+str_)); idx+=1
+        C18  =             Conv2dw(  F2_18,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C19'
+        F1_19= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_19= tf.nn.relu( Conv2dw(  F1_19,_w[idx], name_='G2'+str_)); idx+=1
+        C19  =             Conv2dw(  F2_19,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C20'
+        F1_20= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_20= tf.nn.relu( Conv2dw(  F1_20,_w[idx], name_='G2'+str_)); idx+=1
+        C20  =             Conv2dw(  F2_20,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C21'
+        F1_21= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_21= tf.nn.relu( Conv2dw(  F1_21,_w[idx], name_='G2'+str_)); idx+=1
+        C21  =             Conv2dw(  F2_21,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C22'
+        F1_22= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_22= tf.nn.relu( Conv2dw(  F1_22,_w[idx], name_='G2'+str_)); idx+=1
+        C22  =             Conv2dw(  F2_22,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C23'
+        F1_23= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_23= tf.nn.relu( Conv2dw(  F1_23,_w[idx], name_='G2'+str_)); idx+=1
+        C23  =             Conv2dw(  F2_23,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C24'
+        F1_24= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_24= tf.nn.relu( Conv2dw(  F1_24,_w[idx], name_='G2'+str_)); idx+=1
+        C24  =             Conv2dw(  F2_24,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C25'
+        F1_25= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_25= tf.nn.relu( Conv2dw(  F1_25,_w[idx], name_='G2'+str_)); idx+=1
+        C25  =             Conv2dw(  F2_25,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C26'
+        F1_26= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_26= tf.nn.relu( Conv2dw(  F1_26,_w[idx], name_='G2'+str_)); idx+=1
+        C26  =             Conv2dw(  F2_26,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C27'
+        F1_27= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_27= tf.nn.relu( Conv2dw(  F1_27,_w[idx], name_='G2'+str_)); idx+=1
+        C27  =             Conv2dw(  F2_27,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C28'
+        F1_28= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_28= tf.nn.relu( Conv2dw(  F1_28,_w[idx], name_='G2'+str_)); idx+=1
+        C28  =             Conv2dw(  F2_28,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C29'
+        F1_29= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_29= tf.nn.relu( Conv2dw(  F1_29,_w[idx], name_='G2'+str_)); idx+=1
+        C29  =             Conv2dw(  F2_29,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C30'
+        F1_30= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_30= tf.nn.relu( Conv2dw(  F1_30,_w[idx], name_='G2'+str_)); idx+=1
+        C30  =             Conv2dw(  F2_30,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C31'
+        F1_31= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_31= tf.nn.relu( Conv2dw(  F1_31,_w[idx], name_='G2'+str_)); idx+=1
+        C31  =             Conv2dw(  F2_31,_w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C32'
+        F1_32= tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_32= tf.nn.relu( Conv2dw(  F1_32,_w[idx], name_='G2'+str_)); idx+=1
+        C32  =             Conv2dw(  F2_32,_w[idx], name_='G3'+str_) ; idx+=1
+
+
+        ## ordering DS[1,2,3] - [real,imag] - ch[1,2,3,4,5,6,7,8]
+        tmp_cc = tf.concat([C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,
+            C11,C12,C13,C14,C15,C16,C17,C18,C19,C20,
+            C21,C22,C23,C24,C25,C26,C27,C28,C29,C30,
+            C31,C32],axis=ch_dim)
+        K1_real = tf.strided_slice(tmp_cc,[0,0,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K1_imag = tf.strided_slice(tmp_cc,[0,1,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K2_real = tf.strided_slice(tmp_cc,[0,2,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K2_imag = tf.strided_slice(tmp_cc,[0,3,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K3_real = tf.strided_slice(tmp_cc,[0,4,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K3_imag = tf.strided_slice(tmp_cc,[0,5,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K4_real = tf.strided_slice(tmp_cc,[0,6,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K4_imag = tf.strided_slice(tmp_cc,[0,7,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K5_real = tf.strided_slice(tmp_cc,[0,8,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K5_imag = tf.strided_slice(tmp_cc,[0,9,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+
+
+        out_k_ri = tf.concat([K1_real,K1_imag, K2_real, K2_imag, K3_real, K3_imag, K4_real, K4_imag, K5_real, K5_imag],axis=ch_dim)
+        return out_k_ri, _w
+
+def Gnet2_DS4_8ch(inputs, n_out, weights=[], info_theta=[],nCh=32):
+    """ x : tensor or placeholder input [batch, row, col, channel]
+    n_out : numbet of output channel
+    """
+    n_out_C = 6
+    if weights==[]:
+        out_k_ri =  gnet2_DS4(inputs, n_out, True, nCh=nCh, scope='dummy')
+
+        return out_k_ri
+    else:
+        _w = c2ws(weights,info_theta)
+        ##
+        idx = 0
+        ##
+        str_ ='_C1'
+        F1_1 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_1 = tf.nn.relu( Conv2dw(  F1_1, _w[idx], name_='G2'+str_)); idx+=1
+        F3_1 = tf.nn.relu( Conv2dw(  F2_1, _w[idx], name_='G3'+str_)); idx+=1
+        F4_1 = tf.nn.relu( Conv2dw(  F3_1, _w[idx], name_='G4'+str_)); idx+=1
+        C1   =             Conv2dw( F1_1+ F4_1, _w[idx], name_='G5'+str_); idx+=1
+        ##
+        str_ ='_C2'
+        F1_2 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_2 = tf.nn.relu( Conv2dw(  F1_2, _w[idx], name_='G2'+str_)); idx+=1
+        F3_2 = tf.nn.relu( Conv2dw(  F2_2, _w[idx], name_='G3'+str_)); idx+=1
+        F4_2 = tf.nn.relu( Conv2dw(  F3_2, _w[idx], name_='G4'+str_)); idx+=1
+        C2   =             Conv2dw( F1_1+ F4_2, _w[idx], name_='G5'+str_); idx+=1
+        ##
+        str_ ='_C3'
+        F1_3 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_3 = tf.nn.relu( Conv2dw(  F1_3, _w[idx], name_='G2'+str_)); idx+=1
+        F3_3 = tf.nn.relu( Conv2dw(  F2_3, _w[idx], name_='G3'+str_)); idx+=1
+        F4_3 = tf.nn.relu( Conv2dw(  F3_3, _w[idx], name_='G4'+str_)); idx+=1
+        C3   =             Conv2dw( F1_1+ F4_3, _w[idx], name_='G5'+str_); idx+=1
+        ##
+        str_ ='_C4'
+        F1_4 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_4 = tf.nn.relu( Conv2dw(  F1_4, _w[idx], name_='G2'+str_)); idx+=1
+        F3_4 = tf.nn.relu( Conv2dw(  F2_4, _w[idx], name_='G3'+str_)); idx+=1
+        F4_4 = tf.nn.relu( Conv2dw(  F3_4, _w[idx], name_='G4'+str_)); idx+=1
+        C4   =             Conv2dw( F1_1+ F4_4, _w[idx], name_='G5'+str_); idx+=1
+        ##
+        str_ ='_C5'
+        F1_5 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_5 = tf.nn.relu( Conv2dw(  F1_5, _w[idx], name_='G2'+str_)); idx+=1
+        F3_5 = tf.nn.relu( Conv2dw(  F2_5, _w[idx], name_='G3'+str_)); idx+=1
+        F4_5 = tf.nn.relu( Conv2dw(  F3_5, _w[idx], name_='G4'+str_)); idx+=1
+        C5   =             Conv2dw( F1_1+ F4_5, _w[idx], name_='G5'+str_); idx+=1
+        ##
+        str_ ='_C6'
+        F1_6 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_6 = tf.nn.relu( Conv2dw(  F1_6, _w[idx], name_='G2'+str_)); idx+=1
+        F3_6 = tf.nn.relu( Conv2dw(  F2_6, _w[idx], name_='G3'+str_)); idx+=1
+        F4_6 = tf.nn.relu( Conv2dw(  F3_6, _w[idx], name_='G4'+str_)); idx+=1
+        C6   =             Conv2dw( F1_1+ F4_6, _w[idx], name_='G5'+str_); idx+=1
+        ##
+        str_ ='_C7'
+        F1_7 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_7 = tf.nn.relu( Conv2dw(  F1_7, _w[idx], name_='G2'+str_)); idx+=1
+        F3_7 = tf.nn.relu( Conv2dw(  F2_7, _w[idx], name_='G3'+str_)); idx+=1
+        F4_7 = tf.nn.relu( Conv2dw(  F3_7, _w[idx], name_='G4'+str_)); idx+=1
+        C7   =             Conv2dw( F1_1+ F4_7, _w[idx], name_='G5'+str_); idx+=1
+        ##
+        str_ ='_C8'
+        F1_8 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_8 = tf.nn.relu( Conv2dw(  F1_8, _w[idx], name_='G2'+str_)); idx+=1
+        F3_8 = tf.nn.relu( Conv2dw(  F2_8, _w[idx], name_='G3'+str_)); idx+=1
+        F4_8 = tf.nn.relu( Conv2dw(  F3_8, _w[idx], name_='G4'+str_)); idx+=1
+        C8   =             Conv2dw( F1_1+ F4_8, _w[idx], name_='G5'+str_); idx+=1
+
+       ## ordering DS[1,2,3] - [real,imag] - ch[1,2,3,4,5,6,7,8]
+        tmp_cc = tf.concat([C1,C2,C3,C4,C5,C6,C7,C8],axis=ch_dim)
+        K1_real = tf.strided_slice(tmp_cc,[0,0,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K1_imag = tf.strided_slice(tmp_cc,[0,1,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K2_real = tf.strided_slice(tmp_cc,[0,2,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K2_imag = tf.strided_slice(tmp_cc,[0,3,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K3_real = tf.strided_slice(tmp_cc,[0,4,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K3_imag = tf.strided_slice(tmp_cc,[0,5,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+
+        out_k_ri = tf.concat([K1_real,K1_imag, K2_real, K2_imag, K3_real, K3_imag],axis=ch_dim)
+        return out_k_ri, _w
+
+def Gnet_DS4_8ch(inputs, n_out, weights=[], info_theta=[],nCh=32):
+    """ x : tensor or placeholder input [batch, row, col, channel]
+    n_out : numbet of output channel
+    """
+    n_out_C = 6
+    if weights==[]:
+        out_k_ri =  gnet_DS4(inputs, n_out, True, nCh=nCh, scope='dummy')
+
+        return out_k_ri
+    else:
+        _w = c2ws(weights,info_theta)
+        ##
+        idx = 0
+        ##
+        str_ ='_C1'
+        F1_1 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_1 = tf.nn.relu( Conv2dw(  F1_1, _w[idx], name_='G2'+str_)); idx+=1
+        C1   =             Conv2dw(  F2_1, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C2'
+        F1_2 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_2 = tf.nn.relu( Conv2dw(  F1_2, _w[idx], name_='G2'+str_)); idx+=1
+        C2   =             Conv2dw(  F2_2, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C3'
+        F1_3 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_3 = tf.nn.relu( Conv2dw(  F1_3, _w[idx], name_='G2'+str_)); idx+=1
+        C3   =             Conv2dw(  F2_3, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C4'
+        F1_4 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_4 = tf.nn.relu( Conv2dw(  F1_4, _w[idx], name_='G2'+str_)); idx+=1
+        C4   =             Conv2dw(  F2_4, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C5'
+        F1_5 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_5 = tf.nn.relu( Conv2dw(  F1_5, _w[idx], name_='G2'+str_)); idx+=1
+        C5   =             Conv2dw(  F2_5, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C6'
+        F1_6 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_6 = tf.nn.relu( Conv2dw(  F1_6, _w[idx], name_='G2'+str_)); idx+=1
+        C6   =             Conv2dw(  F2_6, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C7'
+        F1_7 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_7 = tf.nn.relu( Conv2dw(  F1_7, _w[idx], name_='G2'+str_)); idx+=1
+        C7   =             Conv2dw(  F2_7, _w[idx], name_='G3'+str_) ; idx+=1
+        ##
+        str_ ='_C8'
+        F1_8 = tf.nn.relu( Conv2dw(inputs, _w[idx], name_='G1'+str_)); idx+=1
+        F2_8 = tf.nn.relu( Conv2dw(  F1_8, _w[idx], name_='G2'+str_)); idx+=1
+        C8   =             Conv2dw(  F2_8, _w[idx], name_='G3'+str_) ; idx+=1
+
+        ## ordering DS[1,2,3] - [real,imag] - ch[1,2,3,4,5,6,7,8]
+        tmp_cc = tf.concat([C1,C2,C3,C4,C5,C6,C7,C8],axis=ch_dim)
+        K1_real = tf.strided_slice(tmp_cc,[0,0,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K1_imag = tf.strided_slice(tmp_cc,[0,1,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K2_real = tf.strided_slice(tmp_cc,[0,2,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K2_imag = tf.strided_slice(tmp_cc,[0,3,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K3_real = tf.strided_slice(tmp_cc,[0,4,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+        K3_imag = tf.strided_slice(tmp_cc,[0,5,0,0],tmp_cc.shape, strides=[1,n_out_C,1,1])
+
+        out_k_ri = tf.concat([K1_real,K1_imag, K2_real, K2_imag, K3_real, K3_imag],axis=ch_dim)
+        return out_k_ri, _w
+
 
 def Unet_wo_BN(inputs, n_out, weights=[], info_theta=[],nCh=32):
     """ x : tensor or placeholder input [batch, row, col, channel]
