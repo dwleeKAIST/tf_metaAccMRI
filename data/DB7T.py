@@ -243,7 +243,7 @@ class DB7T():
         for iB, aBatch in enumerate(batch):
             aTarget_k   = self.read_mat(join(self.root,aBatch),'orig_k')
             if self.Aug:
-                aTarget_k = aTarget_k*np.random.normal(loc=1.0,scale=0.02)#5)
+                aTarget_k = aTarget_k*np.random.normal(loc=1.0,scale=0.05)
 
             aACS_k      = aTarget_k[:,:,self.ACS_s:self.ACS_e]
             input_ACSk_ri[iB,:,:,:]  = aACS_k[:,:,self.bias::self.DSrate]

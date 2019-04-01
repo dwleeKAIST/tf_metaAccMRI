@@ -160,7 +160,7 @@ with tf.Session(config=config) as sess:
                 sum_loss_valid += loss_test_valid
             t_i = time.time()
             print('%d epoch -- loss : %.4f e-3, %d sec' %(iEpoch, sum_loss_valid/opt.nStep_valid*1000, t_i-t_i_v))
-            if (iEpoch%1==0):
+            if (iEpoch%10==0):
                 path_saved = saver.save(sess, os.path.join(opt.ckpt_dir, "model.ckpt"), global_step=iEpoch)
         print(' Total time elpased : %d sec' %(t_init-time.time()))
 
