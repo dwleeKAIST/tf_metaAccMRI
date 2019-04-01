@@ -27,8 +27,8 @@ elif opt.model == 'tmp_net':
 else:
     st()
 # init. DB first
-DB_train = myDB(opt,'train',DSrate=opt.DSrate)
-DB_valid = myDB(opt,'valid',DSrate=opt.DSrate)
+DB_train = myDB(opt,'train')
+DB_valid = myDB(opt,'valid')
 opt      = DB_train.getInfo(opt)
 #
 opt.nStep_train = ceil(len(DB_train)/opt.batchSize)
@@ -75,7 +75,7 @@ with tf.Session(config=config) as sess:
    
     # save the initailzed (Xavier) c2 to c2_init
     myFS.save_state(sess)
-    #nE_update=(opt.nEpoch_state_update + opt.nEpoch_Wb_update)
+    nE_update=(opt.nEpoch_state_update + opt.nEpoch_Wb_update)
     ## Fisrt, train the learner network
     for iEpoch in range(epoch_start, opt.nEpoch):
         if not opt.debug_mode:
@@ -88,7 +88,7 @@ with tf.Session(config=config) as sess:
         t_i_1 = time.time()
         #out_argm = [myFS.optimizer_pre, myFS.loss_test, myFS.merged_all, myFS.gvs_pre]
         #out_arg  = [myFS.optimizer_pre, myFS.loss_test]
-        tag_state_update = iEpoch%2#((iEpoch % nE_update) < opt.nEpoch_state_update)
+        tag_state_update = ((iEpoch % nE_update) < opt.nEpoch_state_update)
         if tag_state_update:
             func_getBatch = DB_train.getBatch_G#_train
             out_argm = [myFS.optimizer_state, myFS.loss_test, myFS.merged_all]
@@ -97,7 +97,7 @@ with tf.Session(config=config) as sess:
             func_getBatch = DB_train.getBatch_G
             out_argm = [myFS.optimizer, myFS.loss_test, myFS.merged_all]
             out_arg  = [myFS.optimizer, myFS.loss_test]
-        #myFS.k_shot = int(iEpoch/100+1)
+        myFS.k_shot = int(opt.k_shot+iEpoch/500)
         for step in range(opt.nStep_train):
             _input_ACSk, _target_ACSk, _input_k, _target_k = func_getBatch(step*nB, (step+1)*nB)
             myFS.restore_state(sess)

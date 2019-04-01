@@ -2,9 +2,17 @@ import tensorflow as tf
 import numpy as np
 from ipdb import set_trace as st
 import matplotlib.pyplot as plt
+import png
 
 ch_dim=1
 dtype = tf.float32
+
+def wpng(fname,arr, nY=288, nX=288):
+    f = open(fname,'wb')
+    w = png.Writer(nY,nX,greyscale=True)
+    arr = np.clip(arr[0,:,:,0],0,255).astype(int)
+    w.write(f,arr)
+    f.close()
 
 def tf_pad0(k_ri, padX,name_=""):
     return  tf.pad(k_ri, [[0,0,],[0,0,],[0,0,],[padX,padX]], 'CONSTANT')
@@ -65,7 +73,7 @@ class DIM2CH2():
 
 
 class DIM2CH4():
-    def __init__(self, shape4D=[1,16,588,288]):
+    def __init__(self, shape4D=[1,16,288,288]):
         self.sz = shape4D
         self.R  = 4 
         self.R_cat = []
@@ -74,39 +82,85 @@ class DIM2CH4():
         for x in range(self.nQ):
             for iR in range(self.R):
                 self.R_cat.append(x+iR*self.nQ)
-   
-    def D2CH(self, k_space, sz=[] ):
-        if sz==[]:
-            sz = self.sz
-        out1   = tf.strided_slice(k_space,[0,0,0,0], sz, strides=[1,1,1,4])
-        input  = tf.strided_slice(k_space,[0,0,0,1], sz, strides=[1,1,1,4])
-        out2   = tf.strided_slice(k_space,[0,0,0,2], sz, strides=[1,1,1,4])
-        out3   = tf.strided_slice(k_space,[0,0,0,3], sz, strides=[1,1,1,4])
-        output = tf.concat([out1,out2,out3],axis=ch_dim)
-        return input, output
-
-    def CH2D(self, k_inp, k_rec ):   
-        nCh= int(self.sz[1] )
-        k1 = tf.slice(k_rec, [0,    0,0,0], [-1,nCh,-1,self.nQ])
-        k3 = tf.slice(k_rec, [0,  nCh,0,0], [-1,nCh,-1,self.nQ])
-        k4 = tf.slice(k_rec, [0,nCh*2,0,0], [-1,nCh,-1,self.nQ])
-        k_space = tf.concat([k1,k_inp,k3,k4],axis=3)
-        return tf.gather(k_space, self.R_cat, axis=3)
-
-    ## util for LapNet
+       
     def D2CH_(self, k_space, sz=[] ):
         if sz==[]:
             sz = self.sz
-        out1   = tf.strided_slice(k_space,[0,0,0,0], sz, strides=[1,1,1,4])
-        out2  = tf.strided_slice(k_space,[0,0,0,1], sz, strides=[1,1,1,4])
-        out3   = tf.strided_slice(k_space,[0,0,0,2], sz, strides=[1,1,1,4])
-        out4   = tf.strided_slice(k_space,[0,0,0,3], sz, strides=[1,1,1,4])
+        out0   = tf.strided_slice(k_space,[0,0,0,0], sz, strides=[1,1,1,self.R])
+        out1   = tf.strided_slice(k_space,[0,0,0,1], sz, strides=[1,1,1,self.R])
+        out2   = tf.strided_slice(k_space,[0,0,0,2], sz, strides=[1,1,1,self.R])
+        out3   = tf.strided_slice(k_space,[0,0,0,3], sz, strides=[1,1,1,self.R])
+        output = tf.concat([out1,out2,out3],axis=ch_dim)
+        return out0, output
+
+    def CH2D_(self, k_inp, k_rec ):   
+        nCh= int(self.sz[ch_dim] )
+        k1 = tf.slice(k_rec, [0,    0,0,0], [-1,nCh,-1,self.nQ])
+        k2 = tf.slice(k_rec, [0,  nCh,0,0], [-1,nCh,-1,self.nQ])
+        k3 = tf.slice(k_rec, [0,nCh*2,0,0], [-1,nCh,-1,self.nQ])
+        k_space = tf.concat([k_inp,k1,k2,k3],axis=3)
+        return tf.gather(k_space, self.R_cat, axis=3)
+
+    def CH2D_RAKI(self, k_inp, k_rec ):   
+        nCh= int(self.sz[ch_dim] )
+        k1 = tf.concat([k_rec[:,:,0,:,:],k_rec[:,:,1,:,:]],axis=1)
+        k2 = tf.concat([k_rec[:,:,2,:,:],k_rec[:,:,3,:,:]],axis=1)
+        k3 = tf.concat([k_rec[:,:,4,:,:],k_rec[:,:,5,:,:]],axis=1)
+        k_space = tf.concat([k_inp,k1,k2,k3],axis=3)
+        return tf.gather(k_space, self.R_cat, axis=3)
+
+
+    ## util for LapNet
+    def D2CH(self, k_space, sz=[] ):
+        st()
+        if sz==[]:
+            sz = self.sz
+        out1   = tf.strided_slice(k_space,[0,0,0,0], sz, strides=[1,1,1,self.R])
+        out2   = tf.strided_slice(k_space,[0,0,0,1], sz, strides=[1,1,1,self.R])
+        out3   = tf.strided_slice(k_space,[0,0,0,2], sz, strides=[1,1,1,self.R])
+        out4   = tf.strided_slice(k_space,[0,0,0,3], sz, strides=[1,1,1,self.R])
         return out1,out2,out3,out4
    
-    def CH2D_(self, k1,k2,k3,k4):   
+    def CH2D(self, k1,k2,k3,k4):
+        st()   
         nCh= int(self.sz[1] )
         k_space = tf.concat([k1,k2,k3,k4],axis=3)
         return tf.gather(k_space, self.R_cat, axis=3)
+
+class DIM2CH6():
+    def __init__(self, shape4D=[1,16,288,288]):
+        self.sz = shape4D
+        self.R  = 6
+        self.R_cat = []
+        self.nQ = int(self.sz[3]/self.R)
+
+        for x in range(self.nQ):
+            for iR in range(self.R):
+                self.R_cat.append(x+iR*self.nQ)
+       
+    def D2CH_(self, k_space, sz=[] ):
+        if sz==[]:
+            sz = self.sz
+        out0   = tf.strided_slice(k_space,[0,0,0,0], sz, strides=[1,1,1,self.R])
+        out1   = tf.strided_slice(k_space,[0,0,0,1], sz, strides=[1,1,1,self.R])
+        out2   = tf.strided_slice(k_space,[0,0,0,2], sz, strides=[1,1,1,self.R])
+        out3   = tf.strided_slice(k_space,[0,0,0,3], sz, strides=[1,1,1,self.R])
+        out4   = tf.strided_slice(k_space,[0,0,0,4], sz, strides=[1,1,1,self.R])
+        out5   = tf.strided_slice(k_space,[0,0,0,5], sz, strides=[1,1,1,self.R])
+        output = tf.concat([out1,out2,out3,out4,out5],axis=ch_dim)
+        return out0, output
+
+    def CH2D_(self, k_inp, k_rec ):   
+        nCh= int(self.sz[ch_dim] )
+        k1 = tf.slice(k_rec, [0,    0,0,0], [-1,nCh,-1,self.nQ])
+        k2 = tf.slice(k_rec, [0,  nCh,0,0], [-1,nCh,-1,self.nQ])
+        k3 = tf.slice(k_rec, [0,nCh*2,0,0], [-1,nCh,-1,self.nQ])
+        k4 = tf.slice(k_rec, [0,nCh*3,0,0], [-1,nCh,-1,self.nQ])
+        k5 = tf.slice(k_rec, [0,nCh*4,0,0], [-1,nCh,-1,self.nQ])
+        k_space = tf.concat([k_inp,k1,k2,k3,k4,k5],axis=3)
+        return tf.gather(k_space, self.R_cat, axis=3)
+
+
 def slice2ker__b( full_tensor, start_idx, szs):
     len2slice = szs[0]
     cur_idx   = start_idx+int(len2slice)
@@ -114,7 +168,10 @@ def slice2ker__b( full_tensor, start_idx, szs):
 
 
 def slice2ker__( full_tensor, start_idx, szs):
-    len2slice = szs[0]*szs[1]*szs[2]*szs[3]
+    #len2slice = szs[0]*szs[1]*szs[2]*szs[3]
+    len2slice = 1
+    for a_sz in szs:
+        len2slice=a_sz*len2slice
     cur_idx   = start_idx+int(len2slice)
     return cur_idx, tf.reshape(tf.slice(full_tensor, [start_idx,0], [len2slice,-1]),szs)
 
@@ -147,7 +204,7 @@ def tf_imgri2ssos(img_ri):
     hnout  = int(int(img_ri.shape[ch_dim])/2)
     real   = tf.slice(img_ri,[0,0,0,0],[-1,hnout,-1,-1])
     imag   = tf.slice(img_ri,[0,hnout,0,0],[-1,hnout,-1,-1])
-    i_ssos = tf.sqrt( tf.reduce_sum(tf.square(real) + tf.square(imag),axis=1, keep_dims=True) )
+    i_ssos = tf.sqrt( tf.reduce_sum(tf.square(real) + tf.square(imag),axis=1, keepdims=True) )
     i_ssos = tf.transpose(i_ssos, [0,2,3,1])
     return i_ssos
 

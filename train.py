@@ -95,7 +95,8 @@ with tf.Session(config=config) as sess:
         else:
             out_argm = [myFS.optimizer, myFS.loss_test, myFS.merged_all]
             out_arg  = [myFS.optimizer, myFS.loss_test]
-    
+        if iEpoch==70:
+            st()
         for step in range(opt.nStep_train):
             _input_ACSk, _target_ACSk, _input_k, _target_k = DB_train.getBatch(step*nB, (step+1)*nB)
             myFS.restore_state(sess)
